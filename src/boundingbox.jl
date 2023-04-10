@@ -6,18 +6,18 @@ mutable struct BoundingBox
 end
 
 """Add a position to a BoundingBox by enlarging it."""
-function addpos!(bb::BoundingBox, i::Int, j::Int)
+function addpos!(bb::BoundingBox, i::Integer, j::Integer)
     addposi!(bb, i)
     addposj!(bb, j)
 end
 
 # When updating the hamiltonian we can speed up the update process by skipping unecessary min and max calls 
-function addposi!(bb::BoundingBox, i::Int)
+function addposi!(bb::BoundingBox, i::Integer)
     bb.mini = min(bb.mini, i)
     bb.maxi = max(bb.maxi, i)
 end
 
-function addposj!(bb::BoundingBox, j::Int)
+function addposj!(bb::BoundingBox, j::Integer)
     bb.minj = min(bb.minj, j)
     bb.maxj = max(bb.maxj, j)
 end
@@ -26,12 +26,12 @@ end
 
 The BoundingBox might end up being larger than necessary.
 """
-function removepos!(bb::BoundingBox, i::Int, j::Int)
+function removepos!(bb::BoundingBox, i::Integer, j::Integer)
     removeposi!(bb, i)
     removeposj!(bb, j)
 end
 
-function removeposi!(bb::BoundingBox, i::Int)
+function removeposi!(bb::BoundingBox, i::Integer)
     if bb.mini == i
         bb.mini += 1
     elseif bb.maxi == i
@@ -39,7 +39,7 @@ function removeposi!(bb::BoundingBox, i::Int)
     end
 end
 
-function removeposj!(bb::BoundingBox, j::Int)
+function removeposj!(bb::BoundingBox, j::Integer)
     if bb.minj == j
         bb.minj += 1
     elseif bb.maxj == j

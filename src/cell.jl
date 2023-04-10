@@ -1,4 +1,4 @@
-import Base: length
+import Base: length, lastindex
 
 @enum Tau veg div
 
@@ -11,7 +11,7 @@ mutable struct AttrSet
     boundingbox::BoundingBox
 end
 
-mutable struct Genome
+mutable struct Genome{}
     sigma::Int
 end
 
@@ -21,3 +21,4 @@ struct Cells
 end
 Cells() = Cells(AttrSet[], Genome[])
 length(cells::Cells) = length(cells.attrsets)
+lastindex(cells::Cells) = lastindex(cells.attrsets)
