@@ -9,57 +9,43 @@ getcenter(bb::BoundingBox) = Pos((bb.minpos.x + bb.maxpos.x) / 2, (bb.minpos.y +
 iterpositions(bb::BoundingBox) = (MatrixPos(x, y) for x in bb.minpos.x:bb.maxpos.x, 
                                                       y in bb.minpos.y:bb.maxpos.y)
 
-function getedges(bb::BoundingBox, matrix::Matrix)
+function getedges(bb::BoundingBox)
     edges = Edge[]
     for x in bb.minpos.x:bb.maxpos.x
-        site1 = getmatrixsite(x, bb.minpos.y, matrix)
-        site2 = getmatrixsite(x, bb.minpos.y - 1, matrix)
-        site3 = getmatrixsite(x, bb.maxpos.y, matrix)
-        site4 = getmatrixsite(x, bb.maxpos.y + 1, matrix)
-        push!(edges, Edge(site1, site2), Edge(site3, site4))
+        push!(
+            edges,
+            Edge(MatrixPos(x, bb.minpos.y), MatrixPos(x, bb.minpos.y - 1)),
+            Edge(MatrixPos(x, bb.maxpos.y), MatrixPos(x, bb.maxpos.y + 1))
+        )
     end
     for y in bb.minpos.y:bb.maxpos.y
-        site1 = getmatrixsite(bb.minpos.x, y, matrix)
-        site2 = getmatrixsite(bb.minpos.x - 1, y, matrix)
-        site3 = getmatrixsite(bb.maxpos.x, y, matrix)
-        site4 = getmatrixsite(bb.maxpos.x + 1, y, matrix)
-        push!(edges, Edge(site1, site2), Edge(site3, site4))
+        push!(
+            edges,
+            Edge(MatrixPos(bb.minpos.x, y), MatrixPos(bb.minpos.x - 1, y)),
+            Edge(MatrixPos(bb.maxpos.x, y), MatrixPos(bb.maxpos.x + 1, y))
+        )
     end
     push!(
         edges,
-        Edge(getmatrixsite(bb.minpos, matrix), getmatrixsite(bb.minpos.x - 1, bb.minpos.y - 1, matrix)),
-        Edge(getmatrixsite(bb.maxpos, matrix), getmatrixsite(bb.maxpos.x + 1, bb.maxpos.y + 1, matrix)),
-        Edge(getmatrixsite(bb.minpos.x, bb.maxpos.y, matrix), getmatrixsite(bb.minpos.x - 1, bb.maxpos.y + 1, matrix)),
-        Edge(getmatrixsite(bb.maxpos.x, bb.minpos.y, matrix), getmatrixsite(bb.maxpos.x + 1, bb.minpos.y - 1, matrix))
+        Edge(bb.minpos, MatrixPos(bb.minpos.x - 1, bb.minpos.y - 1)),
+        Edge(bb.maxpos, MatrixPos(bb.maxpos.x + 1, bb.maxpos.y + 1)),
+        Edge(MatrixPos(bb.minpos.x, bb.maxpos.y), MatrixPos(bb.minpos.x - 1, bb.maxpos.y + 1)),
+        Edge(MatrixPos(bb.maxpos.x, bb.minpos.y), MatrixPos(bb.maxpos.x + 1, bb.minpos.y - 1))
     )
     edges
 end
 
+# Note that to remove a position we would need to check the values from _posx and _posy in the associated BoundaryMap
 "Add a position to a BoundingBox by enlarging it."
 function addpos!(bb::BoundingBox, pos::MatrixPos)
-    addposx!(bb, pos.x)
-    addposy!(bb, pos.y)
+    bb.minpos = Pos(min(bb.minpos.x, pos.x), min(bb.minpos.y, pos.y))
+    bb.maxpos = Pos(max(bb.maxpos.x, pos.x), max(bb.maxpos.y, pos.y))
 end
 
-# When updating the hamiltonian we can speed up the update process by skipping unecessary min and max calls
-function addposx!(bb::BoundingBox, x::Integer)
-    bb.minpos = Pos(min(bb.minpos.x, x), bb.minpos.y)
-    bb.maxpos = Pos(max(bb.maxpos.x, x), bb.maxpos.y)
-end
-
-function addposy!(bb::BoundingBox, y::Integer)
-    bb.minpos = Pos(bb.minpos.x, min(bb.minpos.y, y))
-    bb.maxpos = Pos(bb.maxpos.x, max(bb.maxpos.y, y))
-end
-
-"Remove a pos from a BoundingBox."
-function removepos!(bb::BoundingBox, pos::MatrixPos)
-    removeposx!(bb, pos.x)
-    removeposy!(bb, pos.y)
-end
-
-function removeposx!(bb::BoundingBox, x::Integer)
-end
-
-function removeposy!(bb::BoundingBox, y::Integer)
+# TODO do I need this? Ideally I wouldn't need to iterate over specific cell lattice sites for anything
+# In the C++ code this kind of iteration was used to compute the vectors of motion and the food consumption
+struct BoundaryMap
+    bb::BoundingBox
+    _posx::Vector{Int} # Keeps all the interface positions with the medium and other cells
+    _posy::Vector{Int}
 end
