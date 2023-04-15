@@ -46,6 +46,6 @@ end
 # We will use them when we need to iterate over all positions of a cell to compute an average value
 struct BoundaryMap
     bb::BoundingBox
-    _posx::Vector{Int} # Keeps all the interface positions with the medium and other cells
+    _posx::Vector{Int} # Keeps all the interface positions with the medium and other cells (needed for when we want to remove a position from bb)
     _posy::Vector{Int}
 end
