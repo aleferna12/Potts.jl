@@ -1,52 +1,65 @@
 mutable struct BoundingBox
-    mini::Int
-    maxi::Int
-    minj::Int
-    maxj::Int
+    minpos::MatrixPos
+    maxpos::MatrixPos
 end
+Base.length(bb::BoundingBox) = length(iterpositions(bb))
+getvertices(bb::BoundingBox) = [bb.minpos, MatrixPos(bb.minpos.x, bb.maxpos.y), bb.maxpos, MatrixPos(bb.maxpos.x, bb.minpos.y)]
+getcenter(bb::BoundingBox) = Pos((bb.minpos.x + bb.maxpos.x) / 2, (bb.minpos.y + bb.maxpos.y) / 2)
+"Iterate over every position inside of the BoundingBox."
+iterpositions(bb::BoundingBox) = (MatrixPos(x, y) for x in bb.minpos.x:bb.maxpos.x, 
+                                                      y in bb.minpos.y:bb.maxpos.y)
 
-"""Add a position to a BoundingBox by enlarging it."""
-function addpos!(bb::BoundingBox, i::Integer, j::Integer)
-    addposi!(bb, i)
-    addposj!(bb, j)
-end
-
-# When updating the hamiltonian we can speed up the update process by skipping unecessary min and max calls 
-function addposi!(bb::BoundingBox, i::Integer)
-    bb.mini = min(bb.mini, i)
-    bb.maxi = max(bb.maxi, i)
-end
-
-function addposj!(bb::BoundingBox, j::Integer)
-    bb.minj = min(bb.minj, j)
-    bb.maxj = max(bb.maxj, j)
-end
-
-"""Remove a pos from a BoundingBox by decreasing the corresponding edge.
-
-The BoundingBox might end up being larger than necessary.
-"""
-function removepos!(bb::BoundingBox, i::Integer, j::Integer)
-    removeposi!(bb, i)
-    removeposj!(bb, j)
-end
-
-function removeposi!(bb::BoundingBox, i::Integer)
-    if bb.mini == i
-        bb.mini += 1
-    elseif bb.maxi == i
-        bb.maxi -= 1
+function getedges(bb::BoundingBox, matrix::Matrix)
+    edges = Edge[]
+    for x in bb.minpos.x:bb.maxpos.x
+        site1 = getmatrixsite(x, bb.minpos.y, matrix)
+        site2 = getmatrixsite(x, bb.minpos.y - 1, matrix)
+        site3 = getmatrixsite(x, bb.maxpos.y, matrix)
+        site4 = getmatrixsite(x, bb.maxpos.y + 1, matrix)
+        push!(edges, Edge(site1, site2), Edge(site3, site4))
     end
-end
-
-function removeposj!(bb::BoundingBox, j::Integer)
-    if bb.minj == j
-        bb.minj += 1
-    elseif bb.maxj == j
-        bb.maxj -= 1
+    for y in bb.minpos.y:bb.maxpos.y
+        site1 = getmatrixsite(bb.minpos.x, y, matrix)
+        site2 = getmatrixsite(bb.minpos.x - 1, y, matrix)
+        site3 = getmatrixsite(bb.maxpos.x, y, matrix)
+        site4 = getmatrixsite(bb.maxpos.x + 1, y, matrix)
+        push!(edges, Edge(site1, site2), Edge(site3, site4))
     end
+    push!(
+        edges,
+        Edge(getmatrixsite(bb.minpos, matrix), getmatrixsite(bb.minpos.x - 1, bb.minpos.y - 1, matrix)),
+        Edge(getmatrixsite(bb.maxpos, matrix), getmatrixsite(bb.maxpos.x + 1, bb.maxpos.y + 1, matrix)),
+        Edge(getmatrixsite(bb.minpos.x, bb.maxpos.y, matrix), getmatrixsite(bb.minpos.x - 1, bb.maxpos.y + 1, matrix)),
+        Edge(getmatrixsite(bb.maxpos.x, bb.minpos.y, matrix), getmatrixsite(bb.maxpos.x + 1, bb.minpos.y - 1, matrix))
+    )
+    edges
 end
 
-function iteratepos(boundingbox::BoundingBox)
-    ((i, j) for i in boundingbox.mini:boundingbox.maxi, j in boundingbox.minj:boundingbox.maxj)
+"Add a position to a BoundingBox by enlarging it."
+function addpos!(bb::BoundingBox, pos::MatrixPos)
+    addposx!(bb, pos.x)
+    addposy!(bb, pos.y)
+end
+
+# When updating the hamiltonian we can speed up the update process by skipping unecessary min and max calls
+function addposx!(bb::BoundingBox, x::Integer)
+    bb.minpos = Pos(min(bb.minpos.x, x), bb.minpos.y)
+    bb.maxpos = Pos(max(bb.maxpos.x, x), bb.maxpos.y)
+end
+
+function addposy!(bb::BoundingBox, y::Integer)
+    bb.minpos = Pos(bb.minpos.x, min(bb.minpos.y, y))
+    bb.maxpos = Pos(bb.maxpos.x, max(bb.maxpos.y, y))
+end
+
+"Remove a pos from a BoundingBox."
+function removepos!(bb::BoundingBox, pos::MatrixPos)
+    removeposx!(bb, pos.x)
+    removeposy!(bb, pos.y)
+end
+
+function removeposx!(bb::BoundingBox, x::Integer)
+end
+
+function removeposy!(bb::BoundingBox, y::Integer)
 end

@@ -1,64 +1,47 @@
 using Statistics: mean
 
-function randompos(field::Matrix, borderpadding::Integer=0)
-    irange = range(1 + borderpadding, size(field)[1] - borderpadding)
-    jrange = range(1 + borderpadding, size(field)[2] - borderpadding)
-    rand(irange), rand(jrange)
-end
-
-function initcellpositions!(cellfield::Matrix, sigma::Integer, i::Integer, j::Integer, cell_len::Integer)
+function initcellpositions!(cellmatrix::Matrix, sigma::Integer, center::MatrixPos, cell_len::Integer)
     area = 0
-    bb = BoundingBox(i, i, j, j)
+    bb = BoundingBox(center, center)
     rangebb = BoundingBox(
-        i - floor(cell_len / 2), 
-        i + ceil(cell_len / 2) - 1,
-        j - floor(cell_len / 2),
-        j + ceil(cell_len / 2) - 1
+        MatrixPos(center.x - floor(cell_len / 2), 
+                  center.y - floor(cell_len / 2)),
+        MatrixPos(center.x + ceil(cell_len / 2) - 1, 
+                  center.y + ceil(cell_len / 2) - 1)
     )
-    for (i, j) in iteratepos(rangebb)
-        if cellfield[i, j] == 0
-            cellfield[i, j] = sigma
+    for pos in iterpositions(rangebb)
+        if cellmatrix[pos.x, pos.y] == 0
+            cellmatrix[pos.x, pos.y] = sigma
             area += 1
-            addpos!(bb, i, j)
+            addpos!(bb, pos)
         end
     end
     area, bb
 end
 
-"""Get the center of a cell."""
-function cellcenterpos(cellfield::Matrix, sigma::Integer, cellbb::BoundingBox)
-    is, js = Int[], Int[]
-    for (i, j) in iteratepos(cellbb)
-        if cellfield[i, j] == sigma
-            push!(is, i)
-            push!(js, j)
-        end
-    end
-    mean(is), mean(js)
-end
-
-function spawncell!(cells::Cells, cellfield::Matrix, cell_len::Integer)
+function spawncell!(cells::Cells, cellmatrix::Matrix, cell_len::Integer)
     sigma = lastindex(cells) + 1
-    i, j = randompos(cellfield, cell_len)
-    area, cellbb = initcellpositions!(cellfield, sigma, i, j, cell_len)
-    x, y = cellcenterpos(cellfield, sigma, cellbb)
+    spawncenter = getrandompos(cellmatrix, cell_len)
+    area, bb = initcellpositions!(cellmatrix, sigma, spawncenter, cell_len)
+    edges = getedges(bb, cellmatrix)
     attrset = AttrSet(
         sigma,
         veg,
         area,
-        x, y,
-        cellbb
+        getcenter(bb),
+        bb
     )
     push!(cells.attrsets, attrset)
+    append!(cells.edges, edges)
 end
 
 function setup(;ncells::Integer,
                size::Integer,
                cell_length::Integer)
     cells = Cells()
-    cellfield = zeros(size, size)
+    cellmatrix = zeros(Int, size, size)
     for _ in 1:ncells
-        spawncell!(cells, cellfield, cell_length)
+        spawncell!(cells, cellmatrix, cell_length)
     end
-    cells, cellfield
+    cells, cellmatrix
 end
