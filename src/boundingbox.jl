@@ -42,8 +42,8 @@ function addpos!(bb::BoundingBox, pos::MatrixPos)
     bb.maxpos = Pos(max(bb.maxpos.x, pos.x), max(bb.maxpos.y, pos.y))
 end
 
-# TODO do I need this? Ideally I wouldn't need to iterate over specific cell lattice sites for anything
-# In the C++ code this kind of iteration was used to compute the vectors of motion and the food consumption
+# TODO add a Cells field called boundarymaps that hold one of these for each cells
+# We will use them when we need to iterate over all positions of a cell to compute an average value
 struct BoundaryMap
     bb::BoundingBox
     _posx::Vector{Int} # Keeps all the interface positions with the medium and other cells
