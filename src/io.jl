@@ -17,8 +17,8 @@ end
 function drawcellborders!(img, cells, color::RGB)
     for edge in cells.edgeset
         for pos in [edge[1], edge[2]]
-            content = cells.matrix[pos]
-            if content != 0 && (cells.matrix[pos.x - 1, pos.y] != content || cells.matrix[pos.x, pos.y - 1] != content)
+            sigma = cells.matrix[pos]
+            if 1 ∉ [pos.x, pos.y] && sigma != 0 && (cells.matrix[pos.x - 1, pos.y] != sigma || cells.matrix[pos.x, pos.y - 1] != sigma)
                 img[pos] = color
     end end end
 end

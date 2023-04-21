@@ -3,11 +3,14 @@ struct Pos{T<:Number}
     x::T
     y::T
 end
+inbounds(pos::Pos, bounds::Tuple) = 0 < pos.x <= bounds[1] && 0 < pos.y <= bounds[2]
+filterinbounds(positions, bounds::Tuple) = filter(pos -> inbounds(pos, bounds), positions)
 
 "Often in CPM simulations positions are represented as matrix indices, so we provide this alias definition."
 MatrixPos = Pos{Int}
 Base.getindex(array::Array, pos::MatrixPos) = array[pos.x, pos.y]
 Base.setindex!(array::Array, value, pos::MatrixPos) = array[pos.x, pos.y] = value
+Base.checkindex(::Type{Bool}, inds::AbstractUnitRange, index::MatrixPos) = 0 < index.x * index.y <= length(inds)
 getadjacentx(pos::MatrixPos) = [MatrixPos(pos.x - 1, pos.y), MatrixPos(pos.x + 1, pos.y)]
 getadjacenty(pos::MatrixPos) = [MatrixPos(pos.x, pos.y - 1), MatrixPos(pos.x, pos.y + 1)]
 vonneumann_neighbors(pos::MatrixPos) = [getadjacentx(pos); getadjacenty(pos)]
