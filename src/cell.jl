@@ -1,4 +1,4 @@
-@enum Tau veg div
+@enum Tau veg=1 div
 
 mutable struct AttrSet
     sigma::Int
@@ -35,6 +35,7 @@ function spawncell!(cells::Cells, cell_len::Integer)
     union!(cells.edgeset, getedges(bb))
 end
 
+"Initialize a cell on a matrix and return its area and bounding box."
 function initcellpositions!(matrix::Matrix, sigma::Integer, center::MatrixPos, cell_len::Integer)
     area = 0
     bb = BoundingBox(center, center)

@@ -32,7 +32,7 @@ function getedges(bb::BoundingBox)
         Edge(MatrixPos(bb.minpos.x, bb.maxpos.y), MatrixPos(bb.minpos.x - 1, bb.maxpos.y + 1)),
         Edge(MatrixPos(bb.maxpos.x, bb.minpos.y), MatrixPos(bb.maxpos.x + 1, bb.minpos.y - 1))
     )
-    edges
+    repeat(edges, 2)
 end
 
 # Note that to remove a position we would need to check the values from _posx and _posy in the associated BoundaryMap
@@ -40,12 +40,4 @@ end
 function addpos!(bb::BoundingBox, pos::MatrixPos)
     bb.minpos = Pos(min(bb.minpos.x, pos.x), min(bb.minpos.y, pos.y))
     bb.maxpos = Pos(max(bb.maxpos.x, pos.x), max(bb.maxpos.y, pos.y))
-end
-
-# TODO add a Cells field called boundarymaps that hold one of these for each cells
-# We will use them when we need to iterate over all positions of a cell to compute an average value
-struct BoundaryMap
-    bb::BoundingBox
-    _posx::Vector{Int} # Keeps all the interface positions with the medium and other cells (needed for when we want to remove a position from bb)
-    _posy::Vector{Int}
 end

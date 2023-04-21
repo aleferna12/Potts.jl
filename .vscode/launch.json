@@ -8,7 +8,7 @@
             "type": "julia",
             "request": "launch",
             "name": "Run active Julia file",
-            "program": "${workspaceFolder}/src/main.jl",
+            "program": "${workspaceFolder}/src/run.jl",
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
             "juliaEnv": "${command:activeJuliaEnvironment}"

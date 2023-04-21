@@ -1,8 +1,24 @@
-using GLMakie
-GLMakie.activate!(fxaa=false)
+function plotsimulation!(cells::Cells, filename::AbstractString)
+    img = fill(colorant"white", size(cells.matrix)...)
+    drawcells!(img, cells, colorant"gray")
+    drawcellborders!(img, cells, colorant"black")
+    save(filename, img[end:-1:1, :])  # Reverse the image to comply with Images.jl standard
+end
 
-function plotsimulation!(cellmatrix::Matrix, filename::AbstractString)
-    scene = Scene(camera=campixel!, resolution=size(cellmatrix))
-    image!(scene, cellmatrix, colormap=:nipy_spectral)
-    save(filename, scene)
+function drawcells!(img, cells, color::RGB)
+    img[cells.matrix .> 0] .= color
+end
+
+function drawcells!(img, cells, colors=[RGB(rand(3)...) for _ in 1:length(cells)])
+    mask = cells.matrix .> 0
+    img[mask] = colors[cells.matrix[mask]]
+end
+
+function drawcellborders!(img, cells, color::RGB)
+    for edge in cells.edgeset
+        for pos in [edge[1], edge[2]]
+            content = cells.matrix[pos]
+            if content != 0 && (cells.matrix[pos.x - 1, pos.y] != content || cells.matrix[pos.x, pos.y - 1] != content)
+                img[pos] = color
+    end end end
 end
