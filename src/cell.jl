@@ -15,31 +15,37 @@ struct Cells
     attrsets::Vector{AttrSet}
     genomes::Vector{Genome}
     matrix::Matrix{Int}
-    adhmatrix::Matrix{Float64}
     edgeset::Set{Edge}
 end
-Cells(size::Integer) = Cells(AttrSet[], Genome[], zeros(Int, size, size), zeros(Float64, size, size), Set{Edge}())
-Base.length(cells) = length(cells.attrsets)
-Base.lastindex(cells) = lastindex(cells.attrsets)
-Base.size(cells) = size(cells.matrix)
-Base.size(cells, dim::Integer) = size(cells.matrix, dim)
+Cells(fieldsize::Integer) = Cells(AttrSet[], Genome[], createcellmatrix(fieldsize), Set{Edge}())
+Base.length(cells::Cells) = length(cells.attrsets)
+Base.lastindex(cells::Cells) = lastindex(cells.attrsets)
+Base.size(cells::Cells) = size(cells.matrix)
+Base.size(cells::Cells, dim::Integer) = size(cells.matrix, dim)
 getsigma(cells, pos::MatrixPos) = cells.matrix[pos]
 setsigma(cells, pos::MatrixPos, val) = cells.matrix[pos] = val
 gettau(cells, sigma::Integer) = cells.attrsets[sigma].tau
 getarea(cells, sigma::Integer) = cells.attrsets[sigma].area
-getadhenergy(cells, pos::MatrixPos) = cells.adhmatrix[pos]
-setadhenergy(cells, pos::MatrixPos, val) = cells.adhmatrix[pos] = val
-getneighbors(cells, pos::MatrixPos) = filterinbounds(moore_neighbors(pos), size(cells))
 
 function getadhesion(cells, sigma1, sigma2, adhesiontable, adhesionmedium)::Float64
-    ismed1, ismed2 = sigma1 == 0, sigma2 == 0
-    if ismed1 && ismed2
+    if sigma1 == sigma2
         return 0.
-    elseif !ismed1 && !ismed2
-        return adhesiontable[Int(gettau(cells, sigma1)), Int(gettau(cells, sigma2))]
-    else
+    end
+    if sigma1 == 0 || sigma2 == 0
         return adhesionmedium
     end
+    adhesiontable[Int(gettau(cells, sigma1)), Int(gettau(cells, sigma2))]
+end
+
+function createcellmatrix(fieldsize)
+    m = zeros(Int, fieldsize, fieldsize)
+    for i in 1:fieldsize
+        m[i, 1] = -1
+        m[i, fieldsize] = -1
+        m[1, i] = -1
+        m[fieldsize, i] = -1
+    end
+    m
 end
 
 function spawncell!(cells::Cells, cell_len::Integer)
@@ -53,7 +59,7 @@ function spawncell!(cells::Cells, cell_len::Integer)
         getcenter(bb)
     )
     push!(cells.attrsets, attrset)
-    union!(cells.edgeset, getedges(bb))
+    union!(cells.edgeset, getedges(cells, bb))
 end
 
 "Initialize a cell on a matrix and return its area and bounding box."
@@ -74,4 +80,16 @@ function initcellpositions!(matrix::Matrix, sigma::Integer, center::MatrixPos, c
         end
     end
     area, bb
+end
+
+function getedges(cells, bb::BoundingBox)
+    edges = Set{Edge}()
+    for pos in iterpositions(bb)
+        sigmapos = getsigma(cells, pos)
+        for neigh in moore_neighbors(pos)
+            sigmaneigh = getsigma(cells, neigh)
+            if sigmapos > -1 && sigmaneigh > -1 && sigmapos != sigmaneigh
+                addedges!(edges, pos, neigh)
+    end end end
+    edges
 end

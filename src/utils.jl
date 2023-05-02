@@ -7,18 +7,17 @@ inbounds(pos::Pos, bounds::Tuple) = 0 < pos.x <= bounds[1] && 0 < pos.y <= bound
 filterinbounds(positions, bounds::Tuple) = filter(pos -> inbounds(pos, bounds), positions)
 
 "Often in CPM simulations positions are represented as matrix indices, so we provide this alias definition."
-MatrixPos = Pos{Int}
+const MatrixPos = Pos{Int}
 Base.getindex(array::Array, pos::MatrixPos) = array[pos.x, pos.y]
 Base.setindex!(array::Array, value, pos::MatrixPos) = array[pos.x, pos.y] = value
 Base.checkindex(::Type{Bool}, inds::AbstractUnitRange, index::MatrixPos) = 0 < index.x * index.y <= length(inds)
 getadjacentx(pos::MatrixPos) = [MatrixPos(pos.x - 1, pos.y), MatrixPos(pos.x + 1, pos.y)]
 getadjacenty(pos::MatrixPos) = [MatrixPos(pos.x, pos.y - 1), MatrixPos(pos.x, pos.y + 1)]
 vonneumann_neighbors(pos::MatrixPos) = [getadjacentx(pos); getadjacenty(pos)]
-moore_neighbors(pos::MatrixPos) = [vonneumann_neighbors(pos)...,
-                                   MatrixPos(pos.x - 1, pos.y - 1),
-                                   MatrixPos(pos.x - 1, pos.y + 1),
-                                   MatrixPos(pos.x + 1, pos.y - 1),
-                                   MatrixPos(pos.x + 1, pos.y + 1)]
+moore_neighbors(pos::MatrixPos) = [vonneumann_neighbors(pos); [MatrixPos(pos.x - 1, pos.y - 1),
+                                                               MatrixPos(pos.x - 1, pos.y + 1),
+                                                               MatrixPos(pos.x + 1, pos.y - 1),
+                                                               MatrixPos(pos.x + 1, pos.y + 1)]]
 
 function getrandompos(matrix::Matrix, borderpadding::Integer=0)
     xrange = range(1 + borderpadding, size(matrix)[1] - borderpadding)
@@ -26,16 +25,14 @@ function getrandompos(matrix::Matrix, borderpadding::Integer=0)
     MatrixPos(rand(xrange), rand(yrange))
 end
 
-Edge = Pair{MatrixPos, MatrixPos}
+const Edge = Pair{MatrixPos, MatrixPos}
 
-function removeedges!(edgeset, pos1, pos2) 
-    delete!(edgeset, Edge(pos1, pos2))
-    delete!(edgeset, Edge(pos2, pos1))
+function removeedges!(edgeset, pos1, pos2)
+    pop!(edgeset, Edge(pos1, pos2), Edge(pos2, pos1))
 end
 
 function addedges!(edgeset, pos1, pos2)
-    push!(edgeset, Edge(pos1, pos2))
-    push!(edgeset, Edge(pos2, pos1))
+    push!(edgeset, Edge(pos1, pos2), Edge(pos2, pos1))
 end
 
 allsame(x) = all(y -> y == first(x), x)
