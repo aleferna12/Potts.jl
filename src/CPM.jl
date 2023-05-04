@@ -3,9 +3,12 @@ module CPM
 export main
 
 using Images
+using ImageView
 
 using Statistics: mean
 using Random: randperm, seed!
+
+import Gtk
 
 include("utils.jl")
 include("boundingbox.jl")
@@ -16,14 +19,18 @@ include("io.jl")
 
 "Entry point."
 function main()
+    makesimdirs(PARAMS.simdir, [PARAMS.imagesdirname], PARAMS.replaceprevsim)
+    
     cells = setup()
-    plotsimulation!(cells, "run/t0.png")
-    for i in 1:PARAMS.endsim
-        step(i, cells)
-        if i % PARAMS.imageperiod == 0
-            println("Timestep: $i")
-            plotsimulation!(cells, "run/t$i.png")
-    end end
-end
+    gui = makegui(
+        PARAMS.displayperiod,
+        length(PARAMS.imageplots),
+        PARAMS.displaysize
+    )
+
+    for i in 0:PARAMS.endsim
+        step(cells, i)
+        output(cells, gui, i)
+end end
  
 end # module CPM

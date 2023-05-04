@@ -6,7 +6,7 @@ function setup()
     cells
 end
 
-function step(time::Integer, cells::Cells)
+function step(cells::Cells, time::Integer)
     updatehamiltonian!(cells)
     # Iterate the matrix and use the sigmas to calculate and update cell attributes
     # updateattributes!(cells)
@@ -16,7 +16,7 @@ function updatehamiltonian!(cells::Cells)
     # TODO: Check c++ code to understand how we used to do it
     # I think they are adding to a 'loop' variable but this variable is an int and they are adding floats (so doing nothing essentially)
     tovisit = length(cells.edgeset) / 8  # 8 because moore_neighbors gives 8 neighbours
-    for _ in 1:floor(tovisit)
+    for _ in 1:ceil(tovisit)
         edge = rand(cells.edgeset)
         if getsigma(cells, edge[1]) == getsigma(cells, edge[2])
             continue
@@ -37,23 +37,21 @@ function deltahamiltonian(cells::Cells, copyattempt::Edge)
     if sigma2 != 0
         deltaH += deltaHsize(getarea(cells, sigma2), -1, PARAMS.targetcellarea, PARAMS.sizelambda)
     end
-    deltaH + interface_adhenergy(cells, copyattempt[2], sigma1, PARAMS.adhesiontable, PARAMS.adhesionmedium, PARAMS.borderenergy)
+    deltaH + deltaHadhenergy(sigma2, sigma1, copyattempt[2], cells, PARAMS.adhesiontable, PARAMS.adhesionmedium, PARAMS.borderenergy)
 end
 
 deltaHsize(area, deltaarea, targetarea, sizelambda) = sizelambda * deltaarea * (2 * (area - targetarea) + deltaarea)
 
-function interface_adhenergy(cells::Cells, pos::MatrixPos, newsigma, adhesiontable, adhesionmedium, borderenergy)::Float64
-    sigmapos = getsigma(cells, pos)
+function deltaHadhenergy(oldsigma,
+                         newsigma,
+                         pos::MatrixPos,
+                         cells,
+                         adhargs...)
     energy = 0.
-    for neigh in moore_neighbors(pos)
-        sigmaneigh = getsigma(cells, neigh)
-        if sigmaneigh < 0
-            energy += (newsigma == 0 ? 0 : borderenergy) - (sigmapos == 0 ? 0 : borderenergy)
-        else
-            energy +=
-            getadhesion(cells, newsigma, sigmaneigh, adhesiontable, adhesionmedium) -
-            getadhesion(cells, sigmapos, sigmaneigh, adhesiontable, adhesionmedium)
-    end end
+    for neighsigma in (getsigma(cells, npos) for npos in moore_neighbors(pos))
+        energy += getadhenergy(cells, newsigma, neighsigma, adhargs...)
+        energy -= getadhenergy(cells, oldsigma, neighsigma, adhargs...)
+    end
     energy
 end
 

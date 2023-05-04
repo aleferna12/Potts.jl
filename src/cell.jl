@@ -27,11 +27,14 @@ setsigma(cells, pos::MatrixPos, val) = cells.matrix[pos] = val
 gettau(cells, sigma::Integer) = cells.attrsets[sigma].tau
 getarea(cells, sigma::Integer) = cells.attrsets[sigma].area
 
-function getadhesion(cells, sigma1, sigma2, adhesiontable, adhesionmedium)::Float64
+function getadhenergy(cells, sigma1, sigma2, adhesiontable, adhesionmedium, borderenergy)::Float64
     if sigma1 == sigma2
         return 0.
     end
-    if sigma1 == 0 || sigma2 == 0
+    sigma1, sigma2 = orderedpair(sigma1, sigma2)
+    if sigma1 < 0
+        return sigma2 == 0 ? 0. : borderenergy
+    elseif sigma1 == 0
         return adhesionmedium
     end
     adhesiontable[Int(gettau(cells, sigma1)), Int(gettau(cells, sigma2))]
@@ -39,7 +42,7 @@ end
 
 function createcellmatrix(fieldsize)
     m = zeros(Int, fieldsize, fieldsize)
-    for i in 1:fieldsize
+    for i in 1:fieldsize  # Borders
         m[i, 1] = -1
         m[i, fieldsize] = -1
         m[1, i] = -1

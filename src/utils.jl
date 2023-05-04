@@ -37,4 +37,4 @@ end
 
 allsame(x) = all(y -> y == first(x), x)
 
-orderpair(x1, x2) = x2 < x1 ? x2 => x1 : x1 => x2
+orderedpair(x1, x2) = x2 < x1 ? x2 => x1 : x1 => x2
