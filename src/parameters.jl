@@ -6,11 +6,11 @@ Base.@kwdef struct Parameters
     cell_length::Int = 5
     boltzmanntemp::Float64 = 12
     sizelambda::Float64 = 1
-    targetcellarea::Int = 25
+    targetcellarea::Int = 25  # TODO: change to float (also on function calls)
     adhesiontable::Matrix{Float64} = fill(8, 2, 2)
     adhesionmedium::Float64 = 8
     borderenergy::Float64 = 100
-    simdir::String = "./run"
+    simdir::String = "./runs/debug"
     imagesdirname::String = "image"
     replaceprevsim::Bool = false
     imageplots::Vector{Symbol} = [:sigma]
@@ -25,8 +25,9 @@ end
 
 function readparams(filepath)
     content = read(filepath, String)
-    parsable = replace(content, r"::.*(?==)" => "")
-    parsed = Meta.parse("begin " * parsable * " end")
+    parsable = replace(content, r"::.*(?==)" => "") # The type annotations on the file are decorative what matters is the struct types
+    parsed = Meta.parse("begin\n" * parsable * "\nend")
+    display(parsed)
     paramtup = NamedTuple(expr.args[1] => eval(expr.args[2]) for expr in parsed.args if expr isa Expr)
     Parameters(; paramtup...)
 end
