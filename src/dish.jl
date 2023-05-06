@@ -1,18 +1,18 @@
-function setup()
-    cells = Cells(PARAMS.fieldsize)
-    for _ in 1:PARAMS.ncells
-        spawncell!(cells, PARAMS.cell_length)
+function setup(params)
+    cells = Cells(params.fieldsize)
+    for _ in 1:params.ncells
+        spawncell!(cells, params.cell_length)
     end
     cells
 end
 
-function step(cells::Cells, time::Integer)
-    updatehamiltonian!(cells)
+function step(cells::Cells, time::Integer, params)
+    updatehamiltonian!(cells, params)
     # Iterate the matrix and use the sigmas to calculate and update cell attributes
     # updateattributes!(cells)
 end
 
-function updatehamiltonian!(cells::Cells)
+function updatehamiltonian!(cells::Cells, params)
     # TODO: Check c++ code to understand how we used to do it
     # I think they are adding to a 'loop' variable but this variable is an int and they are adding floats (so doing nothing essentially)
     tovisit = length(cells.edgeset) / 8  # 8 because moore_neighbors gives 8 neighbours
@@ -22,22 +22,22 @@ function updatehamiltonian!(cells::Cells)
             continue
         end
 
-        dH = deltahamiltonian(cells, edge)
-        if acceptcopy(dH, PARAMS.boltzmanntemp)
+        dH = deltahamiltonian(cells, edge, params)
+        if acceptcopy(dH, params.boltzmanntemp)
             copyspin!(cells, edge)
 end end end
 
 "Computes the local energy difference in case a lattice copy event (represented by an edge) occurs."
-function deltahamiltonian(cells::Cells, copyattempt::Edge)
+function deltahamiltonian(cells::Cells, copyattempt::Edge, params)
     deltaH = 0.
     sigma1, sigma2 = cells.matrix[[copyattempt...]]
     if sigma1 != 0
-        deltaH += deltaHsize(getarea(cells, sigma1), 1, PARAMS.targetcellarea, PARAMS.sizelambda)
+        deltaH += deltaHsize(getarea(cells, sigma1), 1, params.targetcellarea, params.sizelambda)
     end
     if sigma2 != 0
-        deltaH += deltaHsize(getarea(cells, sigma2), -1, PARAMS.targetcellarea, PARAMS.sizelambda)
+        deltaH += deltaHsize(getarea(cells, sigma2), -1, params.targetcellarea, params.sizelambda)
     end
-    deltaH + deltaHadhenergy(sigma2, sigma1, copyattempt[2], cells, PARAMS.adhesiontable, PARAMS.adhesionmedium, PARAMS.borderenergy)
+    deltaH + deltaHadhenergy(sigma2, sigma1, copyattempt[2], cells, params.adhesiontable, params.adhesionmedium, params.borderenergy)
 end
 
 deltaHsize(area, deltaarea, targetarea, sizelambda) = sizelambda * deltaarea * (2 * (area - targetarea) + deltaarea)

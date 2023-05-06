@@ -1,27 +1,44 @@
 const SIGMACOLORS = [RGB(rand(3)...) for _ in 1:100]
 const TAUCOLORS = [colorant"darkgray", colorant"lightgreen"]  # TODO: make parameter
 
-function output(cells, gui, time)
-    if PARAMS.infoperiod > 0 && time % PARAMS.infoperiod == 0
+function setupoutput(params)
+    outputobjs = (
+        params.displayframerate > 0 ? makegui(length(params.imageplots), params.displaysize) : Dict(),
+        Counter(max(0, params.infoperiod), cock=true, active=params.infoperiod > 0),
+        Counter(max(0, params.imageperiod), cock=true, active=params.imageperiod > 0),
+        Timer(Millisecond(max(0, round(1000 / params.displayframerate))), cock=true, active=params.displayframerate > 0)
+    )
+    outputobjs
+end
+
+function output!(cells,
+                 time,
+                 gui,
+                 infocounter,
+                 savecounter,
+                 displaytimer,
+                 params)
+    if fire!(infocounter, time)
         println("Timestep: $time")
     end
 
-    savetime = PARAMS.imageperiod > 0 && time % PARAMS.imageperiod == 0
-    displaytime = PARAMS.displayperiod > 0 && time % PARAMS.displayperiod == 0
-    if savetime || displaytime
-        imgdict = simulationimages(cells, PARAMS.imageplots)
-        if savetime
-            dir = joinpath(PARAMS.simdir, PARAMS.imagesdirname)
-            if PARAMS.savegif
+    savenow = fire!(savecounter, time)
+    displaynow = fire!(displaytimer)
+    if savenow || displaynow
+        imgdict = simulationimages(cells, params.imageplots, params.drawcellborders)
+        if savenow
+            dir = joinpath(params.simdir, params.imagesdirname)
+            if params.savegif
                 save_simulationimages(imgdict, dir)
             else
                 save_simulationimages(imgdict, dir, time)
         end end
-        if displaytime
+        if displaynow
             display_simulationimages(imgdict, gui)
-end end end
+    end end
+end
 
-function simulationimages(cells::Cells, plots::Vector{Symbol})
+function simulationimages(cells::Cells, plots::Vector{Symbol}, drawcellborders)
     imgdict = Dict{Symbol, Matrix}()
     for plot in plots
         img = fill(colorant"white", size(cells.matrix))
@@ -30,7 +47,7 @@ function simulationimages(cells::Cells, plots::Vector{Symbol})
         elseif plot == :tau
             drawtaus!(img, cells, TAUCOLORS)
         end
-        if PARAMS.drawcellborders
+        if drawcellborders
             drawcellborders!(img, cells, colorant"black")
         end
         imgdict[plot] = img[end:-1:1, :]
@@ -60,7 +77,7 @@ function display_simulationimages(imgdict, gui)
         for (i, img) in values(imgdict) |> enumerate
             imshow(gui["canvas"][i], img)
     end end
-    sleep(0.0001) # Forces the UI to update 
+    sleep(0.000001) # This is the time frame in which the user can interact with the display
 end
 
 function drawcells!(img, cells, color::RGB)
@@ -82,15 +99,12 @@ function drawcellborders!(img, cells, color::RGB)
                 img[pos] = color
 end end end end
 
-function makegui(displayperiod::Integer, nplots::Integer, canvassize)
-    gui::Dict{String, Any} = Dict()
-    if displayperiod > 0
-        rows = nplots == 1 ? 1 : 2
-        cols = ceil(Int, nplots / 2)
-        gui = imshow_gui((canvassize, canvassize), (rows, cols))
-        Gtk.resize!(gui["window"], canvassize * cols, canvassize * rows)
-        Gtk.showall(gui["window"])
-    end
+function makegui(nplots::Integer, canvassize)
+    rows = nplots == 1 ? 1 : 2
+    cols = ceil(Int, nplots / 2)
+    gui = imshow_gui((canvassize, canvassize), (rows, cols))
+    Gtk.resize!(gui["window"], canvassize * cols, canvassize * rows)
+    Gtk.showall(gui["window"])
     gui
 end
 

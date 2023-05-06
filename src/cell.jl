@@ -37,7 +37,7 @@ function getadhenergy(cells, sigma1, sigma2, adhesiontable, adhesionmedium, bord
     elseif sigma1 == 0
         return adhesionmedium
     end
-    adhesiontable[Int(gettau(cells, sigma1)), Int(gettau(cells, sigma2))]
+    adhesiontable[Int(gettau(cells, sigma1)), Int(gettau(cells, sigma2))] * 2
 end
 
 function createcellmatrix(fieldsize)

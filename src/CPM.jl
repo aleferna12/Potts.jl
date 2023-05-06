@@ -2,6 +2,7 @@ module CPM
 
 export main
 
+using Dates
 using Images
 using ImageView
 
@@ -18,19 +19,17 @@ include("dish.jl")
 include("io.jl")
 
 "Entry point."
-function main()
-    makesimdirs(PARAMS.simdir, [PARAMS.imagesdirname], PARAMS.replaceprevsim)
+function main(args=ARGS)
+    params = length(args) == 1 ? readparams(args[1]) : Parameters()
+    makesimdirs(params.simdir, [params.imagesdirname], params.replaceprevsim)
     
-    cells = setup()
-    gui = makegui(
-        PARAMS.displayperiod,
-        length(PARAMS.imageplots),
-        PARAMS.displaysize
-    )
-
-    for i in 0:PARAMS.endsim
-        step(cells, i)
-        output(cells, gui, i)
+    outputobjs = setupoutput(params)
+    cells = setup(params)
+    for i in 0:params.endsim
+        step(cells, i, params)
+        if i % params.outputperiod == 0
+            output!(cells, i, outputobjs..., params)
+        end
 end end
  
 end # module CPM
