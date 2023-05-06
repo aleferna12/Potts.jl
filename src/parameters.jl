@@ -1,4 +1,4 @@
-"Parameters of the simulation that can be accessed in the global scope by highly parametric functions."
+"Parameters of the simulation."
 Base.@kwdef struct Parameters
     endsim::Int = 1000000
     fieldsize::Int = 100
