@@ -27,7 +27,6 @@ function readparams(filepath)
     content = read(filepath, String)
     parsable = replace(content, r"::.*(?==)" => "") # The type annotations on the file are decorative what matters is the struct types
     parsed = Meta.parse("begin\n" * parsable * "\nend")
-    display(parsed)
     paramtup = NamedTuple(expr.args[1] => eval(expr.args[2]) for expr in parsed.args if expr isa Expr)
     Parameters(; paramtup...)
 end
