@@ -3,6 +3,8 @@ struct Pos{T<:Number}
     x::T
     y::T
 end
+getx(pos::Pos) = pos.x
+gety(pos::Pos) = pos.y
 inbounds(pos::Pos, bounds::Tuple) = 0 < pos.x <= bounds[1] && 0 < pos.y <= bounds[2]
 filterinbounds(positions, bounds::Tuple) = filter(pos -> inbounds(pos, bounds), positions)
 
@@ -25,19 +27,22 @@ function getrandompos(matrix::Matrix, borderpadding::Integer=0)
     MatrixPos(rand(xrange), rand(yrange))
 end
 
+
 abstract type AbstractCounter end
 "Amount of time that must go by for a counter to fire."
 getcooldown(counter::AbstractCounter) = counter.cooldown
 "What time was the counter last reset (either automatically or manually)."
 getlasttime(counter::AbstractCounter) = counter.lasttime
-"How much time has elapsed between the last call to 'fire!()' or 'tick!().' 
+"How much time has elapsed between the last call to 'fire!()' or 'tick!()' 
 and the last time the counter was reset (either automatically or manually)."
 getelapsedtime(counter::AbstractCounter) = counter.elapsedtime
+"Whether the counter resets automatically after firing."
 autoresets(counter::AbstractCounter) = counter.autoreset
 isactive(counter::AbstractCounter) = counter.active
 setactive!(counter::AbstractCounter, val) = counter.active = val
 reset!(counter::AbstractCounter, now) = begin counter.elapsedtime = 0; counter.lasttime = now end
-cock!(counter::AbstractCounter) = counter.lasttime
+"Sets the couter to fire next 'fire!()' or 'tick!()' call."
+set!(counter::AbstractCounter) = counter.lasttime -= getcooldown(counter)
 
 "Checks if it's time for the counter to fire.
 
@@ -54,12 +59,11 @@ function fire!(counter::AbstractCounter, now)
     return false
 end
 
-"Updates the counter with the elapsed time since last update.
+"Updates the counter with the elapsed time since last update and checks if it's time to fire.
 
 Returns 'true' if the total elapsed time since the last reset of the counter (including this update's 'elapsed') has surpassed the counter's cooldown."
 function tick!(counter::AbstractCounter, elapsed)
-    counter.elapsedtime += elapsed
-    fire!(counter, counter.lasttime + counter.elapsedtime)
+    fire!(counter, getlasttime(counter) + getelapsedtime(counter) + elapsed)
 end
 
 mutable struct Counter <: AbstractCounter
@@ -69,12 +73,20 @@ mutable struct Counter <: AbstractCounter
     autoreset::Bool
     active::Bool
 end
-Counter(cooldown; 
-        cock=false, 
-        elapsedtime=0, 
-        lasttime=cock ? -cooldown : 0, 
-        autoreset=true, 
-        active=true) = Counter(cooldown, elapsedtime, lasttime, autoreset, active)
+
+function Counter(cooldown; 
+                 set=false, 
+                 elapsedtime=0, 
+                 lasttime=0, 
+                 autoreset=true, 
+                 active=true)
+    counter = Counter(cooldown, elapsedtime, lasttime, autoreset, active)
+    if set
+        set!(counter)
+    end
+    counter
+end
+
 "Handy method for 'tick!(counter, 1)' that is meant to be used every iteration of a loop."
 tick!(counter::Counter) = tick!(counter, 1)
 
@@ -86,12 +98,20 @@ mutable struct Timer <: AbstractCounter
     active::Bool
     Timer(cooldown, elapsedtime, lasttime, autoreset, active) = new(in_ns(cooldown), in_ns(elapsedtime), in_ns(lasttime), autoreset, active)
 end
-Timer(cooldown;
-      cock=false, 
-      elapsedtime=0, 
-      lasttime=cock ? time_ns() - in_ns(cooldown) : time_ns(), 
-      autoreset=true, 
-      active=true) = Timer(cooldown, elapsedtime, lasttime, autoreset, active)
+
+function Timer(cooldown;
+               set=false, 
+               elapsedtime=0, 
+               lasttime=time_ns(), 
+               autoreset=true, 
+               active=true) 
+    timer = Timer(cooldown, elapsedtime, lasttime, autoreset, active)
+    if set
+        set!(timer)
+    end
+    timer
+end
+
 reset!(timer::Timer) = reset!(timer, time_ns())
 fire!(timer::Timer, now::Period) = fire!(timer, in_ns(now))
 "Handy method for 'fire!(timer, time_ns())'."
@@ -100,6 +120,7 @@ tick!(timer::Timer, elapsed::Period) = tick!(timer, in_ns(elapsed))
 
 in_ns(time::Real) = time
 in_ns(time) = Dates.tons(time)
+
 
 const Edge = Pair{MatrixPos, MatrixPos}
 
@@ -110,6 +131,7 @@ end
 function addedges!(edgeset, pos1, pos2)
     push!(edgeset, Edge(pos1, pos2), Edge(pos2, pos1))
 end
+
 
 allsame(x) = all(y -> y == first(x), x)
 

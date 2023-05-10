@@ -3,20 +3,37 @@
 ###########
 
 # How many MCSs to run the simulation for
-endsim::Integer = 1000000
+endsim::Integer = 100000
 
-# Size of the field
-fieldsize::Integer = 100
+# Side of the field
+fieldsize::Integer = 50
 
-#######################
-# Starting Conditions #
-#######################
+###################
+# Cell Properties #
+###################
 
-# Number of starting cells
-ncells::Integer = 15
+# How many cell types there are (must match the length of cell property vectors).
+taus::Integer = 2
+
+# Number of starting cells of each cell type
+ncells::Vector{Integer} = [5, 1]
 
 # Starting cell length
-cell_length::Integer = 5
+cell_length::Vector{Integer} = [5, 45]
+
+# Target area for each cell type
+targetcellarea::Vector{Real} = [50, 900]
+
+# Adhesion energy of a cell with the medium for each cell type
+adhesionmedium::Vector{Real} = [64, 8]
+
+# Symmetric table used to determine cell-cell adhesion energy
+# The indices are the cell types of cells
+adhesiontable::Matrix{Real} = [64 4; 4 16]
+
+# Color of each cell type used for the :tau 'imageplot'.
+# Colors.jl syntax can be used
+cellcolors::Vector{RGB} = [colorant"lightgreen", colorant"gray"]
 
 ###############
 # Hamiltonian #
@@ -28,16 +45,6 @@ boltzmanntemp::Real = 12
 # Size constraint scale (how strongly cells deviating from 'targetcellarea' are penalized)
 sizelambda::Real = 1
 
-# Target area for cells
-targetcellarea::Integer = 25
-
-# Symmetric table used to determine cell-cell adhesion energy
-# The indices are the taus of cells
-adhesiontable::Matrix{Real} = fill(8, 2, 2)
-
-# Adhesion energy of a cell with the medium
-adhesionmedium::Real = 8
-
 # Energy on the interface with a border site
 borderenergy::Real = 100
 
@@ -46,21 +53,21 @@ borderenergy::Real = 100
 ##########
 
 # Directory where the simulation files will be created
-simdir = "./run"
+simdir = "./runs/endosymbiosis"
 
 # Whether to delete the directory indicated by 'simdir' if it already exists
-replaceprevsim = false
+replaceprevsim = true
 
 # Name of the subdirectory where image files are stored
 imagesdirname = "image"
 
 # Vector of which real-time plots to make of the simulation
 # Possible values are: :sigma, :tau
-imageplots = [:sigma]
+imageplots = [:sigma, :tau]
 
 # Whether to save GIFs of the simulation instead of individual image files
 # Not recommended for long simulations (memory might fill up)
-savegif = false
+savegif = true
 
 # How many MCSs must have passed before we try to save any output of the simulation
 # Can be used to remove overhead of output functions
@@ -79,10 +86,13 @@ imageperiod::Integer = 1000
 # Non-positive values disable this feature
 # Low framerate may result in an unresponsive window
 # This parameter is also affected by 'outputperiod'
-displayframerate::Integer = 30
+displayframerate::Integer = 15
 
 # How big is the window of the real-time display
 displaysize::Integer = 350
 
 # Whether to draw borders between cells
 drawcellborders = true
+
+# Whether to draw the center of cells
+drawcellcenters = false

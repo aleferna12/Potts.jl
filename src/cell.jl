@@ -1,33 +1,31 @@
-@enum Tau veg=1 div
-
-mutable struct AttrSet
+mutable struct CellAttrs
     sigma::Int
-    tau::Tau
+    tau::Int
     area::Int
-    center::Pos
+    center::Pos{Float64}
 end
 
-mutable struct Genome{}
-    sigma::Int
-end
+abstract type AbstractCells end
 
-struct Cells
-    attrsets::Vector{AttrSet}
-    genomes::Vector{Genome}
-    matrix::Matrix{Int}
-    edgeset::Set{Edge}
+"Holds information about a group of cells. Uses the components pattern, although this implementation has a single component (cellattrs)."
+struct Cells <: AbstractCells
+    cellattrs::Vector{CellAttrs}
 end
-Cells(fieldsize::Integer) = Cells(AttrSet[], Genome[], createcellmatrix(fieldsize), Set{Edge}())
-Base.length(cells::Cells) = length(cells.attrsets)
-Base.lastindex(cells::Cells) = lastindex(cells.attrsets)
-Base.size(cells::Cells) = size(cells.matrix)
-Base.size(cells::Cells, dim::Integer) = size(cells.matrix, dim)
-getsigma(cells, pos::MatrixPos) = cells.matrix[pos]
-setsigma(cells, pos::MatrixPos, val) = cells.matrix[pos] = val
-gettau(cells, sigma::Integer) = cells.attrsets[sigma].tau
-getarea(cells, sigma::Integer) = cells.attrsets[sigma].area
+Cells() = Cells(CellAttrs[])
+getsigmas(cells::AbstractCells) = [cells.cellattrs[i].sigma for i in 1:length(cells)]
+gettau(cells::AbstractCells, sigma) = cells.cellattrs[sigma].tau
+gettaus(cells::AbstractCells) = [cells.cellattrs[i].tau for i in 1:length(cells)]
+getcenter(cells::AbstractCells, sigma) = cells.cellattrs[sigma].center
+getcenters(cells::AbstractCells) = [cells.cellattrs[i].center for i in 1:length(cells)]
+getarea(cells::AbstractCells, sigma) = cells.cellattrs[sigma].area
+getareas(cells::AbstractCells) = [cells.cellattrs[i].area for i in 1:length(cells)]
+addarea!(cells::AbstractCells, sigma, val) = cells.cellattrs[sigma].area += val
+Base.length(cells::AbstractCells) = length(cells.cellattrs)
+Base.lastindex(cells::AbstractCells) = lastindex(cells.cellattrs)
+Base.size(cells::AbstractCells) = size(getmatrix(cells))
+Base.size(cells::AbstractCells, dim::Integer) = size(getmatrix(cells), dim)
 
-function getadhenergy(cells, sigma1, sigma2, adhesiontable, adhesionmedium, borderenergy)::Float64
+function getadhenergy(cells::AbstractCells, sigma1, sigma2, adhesiontable, adhesionmedium, borderenergy)::Float64
     if sigma1 == sigma2
         return 0.
     end
@@ -35,64 +33,9 @@ function getadhenergy(cells, sigma1, sigma2, adhesiontable, adhesionmedium, bord
     if sigma1 < 0
         return sigma2 == 0 ? 0. : borderenergy
     elseif sigma1 == 0
-        return adhesionmedium
+        return adhesionmedium[gettau(cells, sigma2)]
     end
-    adhesiontable[Int(gettau(cells, sigma1)), Int(gettau(cells, sigma2))] * 2
+    adhesiontable[gettau(cells, sigma1), gettau(cells, sigma2)] * 2
 end
 
-function createcellmatrix(fieldsize)
-    m = zeros(Int, fieldsize, fieldsize)
-    for i in 1:fieldsize  # Borders
-        m[i, 1] = -1
-        m[i, fieldsize] = -1
-        m[1, i] = -1
-        m[fieldsize, i] = -1
-    end
-    m
-end
-
-function spawncell!(cells::Cells, cell_len::Integer)
-    sigma = lastindex(cells) + 1
-    spawncenter = getrandompos(cells.matrix, cell_len)
-    area, bb = initcellpositions!(cells.matrix, sigma, spawncenter, cell_len)
-    attrset = AttrSet(
-        sigma,
-        veg,
-        area,
-        getcenter(bb)
-    )
-    push!(cells.attrsets, attrset)
-    union!(cells.edgeset, getedges(cells, bb))
-end
-
-"Initialize a cell on a matrix and return its area and bounding box."
-function initcellpositions!(matrix::Matrix, sigma::Integer, center::MatrixPos, cell_len::Integer)
-    area = 0
-    bb = BoundingBox(center, center)
-    rangebb = BoundingBox(
-        MatrixPos(center.x - floor(cell_len / 2), 
-                  center.y - floor(cell_len / 2)),
-        MatrixPos(center.x + ceil(cell_len / 2) - 1, 
-                  center.y + ceil(cell_len / 2) - 1)
-    )
-    for pos in iterpositions(rangebb)
-        if matrix[pos.x, pos.y] == 0
-            matrix[pos.x, pos.y] = sigma
-            area += 1
-            addpos!(bb, pos)
-        end
-    end
-    area, bb
-end
-
-function getedges(cells, bb::BoundingBox)
-    edges = Set{Edge}()
-    for pos in iterpositions(bb)
-        sigmapos = getsigma(cells, pos)
-        for neigh in moore_neighbors(pos)
-            sigmaneigh = getsigma(cells, neigh)
-            if sigmapos > -1 && sigmaneigh > -1 && sigmapos != sigmaneigh
-                addedges!(edges, pos, neigh)
-    end end end
-    edges
-end
+abstract type AbstractEvolvableCells end

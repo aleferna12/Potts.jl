@@ -4,14 +4,14 @@ const TAUCOLORS = [colorant"darkgray", colorant"lightgreen"]  # TODO: make param
 function setupoutput(params)
     outputobjs = (
         params.displayframerate > 0 ? makegui(length(params.imageplots), params.displaysize) : Dict(),
-        Counter(max(0, params.infoperiod), cock=true, active=params.infoperiod > 0),
-        Counter(max(0, params.imageperiod), cock=true, active=params.imageperiod > 0),
-        Timer(Millisecond(max(0, round(1000 / params.displayframerate))), cock=true, active=params.displayframerate > 0)
+        Counter(max(0, params.infoperiod), set=true, active=params.infoperiod > 0),
+        Counter(max(0, params.imageperiod), set=true, active=params.imageperiod > 0),
+        Timer(Millisecond(max(0, round(1000 / params.displayframerate))), set=true, active=params.displayframerate > 0)
     )
     outputobjs
 end
 
-function output!(cells,
+function output!(env,
                  time,
                  gui,
                  infocounter,
@@ -25,7 +25,7 @@ function output!(cells,
     savenow = fire!(savecounter, time)
     displaynow = fire!(displaytimer)
     if savenow || displaynow
-        imgdict = simulationimages(cells, params.imageplots, params.drawcellborders)
+        imgdict = simulationimages(env, params.imageplots, params.cellcolors, params.drawcellborders, params.drawcellcenters)
         if savenow
             dir = joinpath(params.simdir, params.imagesdirname)
             if params.savegif
@@ -38,17 +38,20 @@ function output!(cells,
     end end
 end
 
-function simulationimages(cells::Cells, plots::Vector{Symbol}, drawcellborders)
+function simulationimages(env::Environment, plots::Vector{Symbol}, cellcolors, drawcellborders, drawcellcenters)
     imgdict = Dict{Symbol, Matrix}()
     for plot in plots
-        img = fill(colorant"white", size(cells.matrix))
-        if plot == :sigma
-            drawsigmas!(img, cells)
-        elseif plot == :tau
-            drawtaus!(img, cells, TAUCOLORS)
+        img = fill(colorant"white", size(getmatrix(env)))
+        if plot === :sigma
+            drawsigmas!(img, env)
+        elseif plot === :tau
+            drawtaus!(img, env, cellcolors)
         end
         if drawcellborders
-            drawcellborders!(img, cells, colorant"black")
+            drawcellborders!(img, env, colorant"black")
+        end
+        if drawcellcenters
+            drawcellcenters!(img, getcells(env), colorant"red")
         end
         imgdict[plot] = img[end:-1:1, :]
     end
@@ -80,24 +83,30 @@ function display_simulationimages(imgdict, gui)
     sleep(0.000001) # This is the time frame in which the user can interact with the display
 end
 
-function drawcells!(img, cells, color::RGB)
-    img[cells.matrix .> 0] .= color
+function drawcells!(img, matrix, color::RGB)
+    img[matrix .> 0] .= color
 end
-function drawcells!(img, cells, colors::Vector)
-    mask = cells.matrix .> 0
-    img[mask] = colors[cells.matrix[mask]]
+function drawcells!(img, matrix, colors::Vector)
+    mask = matrix .> 0
+    img[mask] = colors[matrix[mask]]
 end
 
-drawsigmas!(img, cells) = drawcells!(img, cells, [SIGMACOLORS[attrset.sigma % length(SIGMACOLORS) + 1] for attrset in cells.attrsets])
-drawtaus!(img, cells, taucolors::Vector) = drawcells!(img, cells, [taucolors[Int(attrset.tau)] for attrset in cells.attrsets])
+drawsigmas!(img, env) = drawcells!(img, getmatrix(env), [SIGMACOLORS[attrset.sigma % length(SIGMACOLORS) + 1] for attrset in getcells(env).cellattrs])
+drawtaus!(img, env, taucolors::Vector) = drawcells!(img, getmatrix(env), [taucolors[Int(attrset.tau)] for attrset in getcells(env).cellattrs])
 
-function drawcellborders!(img, cells, color::RGB)
-    for edge in cells.edgeset
+function drawcellborders!(img, env::Environment, color::RGB)
+    for edge in getedgeset(env)
         for pos in [edge[1], edge[2]]
-            sigma = cells.matrix[pos]
-            if 1 ∉ [pos.x, pos.y] && sigma != 0 && (cells.matrix[pos.x - 1, pos.y] != sigma || cells.matrix[pos.x, pos.y - 1] != sigma)
+            sigma = getmatrix(env)[pos]
+            if 1 ∉ [pos.x, pos.y] && sigma != 0 && (getmatrix(env)[pos.x - 1, pos.y] != sigma || getmatrix(env)[pos.x, pos.y - 1] != sigma)
                 img[pos] = color
 end end end end
+
+function drawcellcenters!(img, cells, color)
+    for center in getcenters(cells)
+        img[round(Int, center.x), round(Int, center.y)] = color
+    end
+end
 
 function makegui(nplots::Integer, canvassize)
     rows = nplots == 1 ? 1 : 2

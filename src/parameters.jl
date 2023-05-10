@@ -1,14 +1,18 @@
+abstract type AbstractParameters end
+
 "Parameters of the simulation."
-Base.@kwdef struct Parameters
+Base.@kwdef struct Parameters <: AbstractParameters
     endsim::Int = 1000000
     fieldsize::Int = 100
-    ncells::Int = 15
-    cell_length::Int = 5
+    taus::Int = 1
+    ncells::Vector{Int} = [20]
+    cell_length::Vector{Int} = [5]
+    targetcellarea::Vector{Float64} = [50]
+    adhesiontable::Matrix{Float64} = hcat(8)
+    adhesionmedium::Vector{Float64} = [8]
+    cellcolors::Vector{RGB} = [colorant"gray"]
     boltzmanntemp::Float64 = 12
     sizelambda::Float64 = 1
-    targetcellarea::Int = 25  # TODO: change to float (also on function calls)
-    adhesiontable::Matrix{Float64} = fill(8, 2, 2)
-    adhesionmedium::Float64 = 8
     borderenergy::Float64 = 100
     simdir::String = "./runs/debug"
     imagesdirname::String = "image"
@@ -21,12 +25,26 @@ Base.@kwdef struct Parameters
     displayframerate::Int = 30
     displaysize::Int = 350
     drawcellborders::Bool = true
+    drawcellcenters::Bool = false
 end
 
-function readparams(filepath)
-    content = read(filepath, String)
+"Read a parameters file into a type 'paramstype'. This type must implement a keyword constructor (using the 'Base.@kwdef' macro)."
+function readparams(paramstype::Type{T}, filepath, args) where T <: AbstractParameters
+    content = readresource(filepath) * '\n' * join(args, '\n')
     parsable = replace(content, r"::.*(?==)" => "") # The type annotations on the file are decorative what matters is the struct types
     parsed = Meta.parse("begin\n" * parsable * "\nend")
     paramtup = NamedTuple(expr.args[1] => eval(expr.args[2]) for expr in parsed.args if expr isa Expr)
-    Parameters(; paramtup...)
+    paramstype(; paramtup...)
 end
+
+function readresource(filepath)
+    try
+        return read(filepath, String)
+    catch e
+        respath = joinpath(PROJECT_HOME, "resources")
+        if e isa SystemError && filepath in readdir(respath)
+            # File not found, try to find it in resources
+            return read(joinpath(respath, filepath), String)
+        else
+            rethrow()
+end end end
