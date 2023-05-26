@@ -6,12 +6,8 @@ mutable struct CellAttrs
 end
 
 abstract type AbstractCells end
-
-"Holds information about a group of cells. Uses the components pattern, although this implementation has a single component (cellattrs)."
-struct Cells <: AbstractCells
-    cellattrs::Vector{CellAttrs}
-end
-Cells() = Cells(CellAttrs[])
+# This interface is designed to automatically work with subtypes of AbstractCells, provided that they implement a cellattrs field
+# A subtype of AbstractCells that doesn't implement this field will still work as long as it instead implements new accessor methods
 getsigmas(cells::AbstractCells) = [cells.cellattrs[i].sigma for i in 1:length(cells)]
 gettau(cells::AbstractCells, sigma) = cells.cellattrs[sigma].tau
 gettaus(cells::AbstractCells) = [cells.cellattrs[i].tau for i in 1:length(cells)]
@@ -25,6 +21,19 @@ Base.lastindex(cells::AbstractCells) = lastindex(cells.cellattrs)
 Base.size(cells::AbstractCells) = size(getmatrix(cells))
 Base.size(cells::AbstractCells, dim::Integer) = size(getmatrix(cells), dim)
 
+"Holds information about a group of cells. Uses the components pattern to miniminze cache misses and improve performance,
+although this implementation has a single component (cellattrs)."
+struct Cells <: AbstractCells
+    cellattrs::Vector{CellAttrs}
+end
+Cells() = Cells(CellAttrs[])
+Base.push!(cells::Cells, sigma, tau, area, center) = push!(cells.cellattrs, CellAttrs(sigma, tau, area, center))
+
+struct EvolvableCells <: AbstractCells
+    cellattrs::Vector{CellAttrs}
+    genomes::Vector{Genome}
+end
+
 function getadhenergy(cells::AbstractCells, sigma1, sigma2, adhesiontable, adhesionmedium, borderenergy)::Float64
     if sigma1 == sigma2
         return 0.
@@ -37,5 +46,3 @@ function getadhenergy(cells::AbstractCells, sigma1, sigma2, adhesiontable, adhes
     end
     adhesiontable[gettau(cells, sigma1), gettau(cells, sigma2)] * 2
 end
-
-abstract type AbstractEvolvableCells end
