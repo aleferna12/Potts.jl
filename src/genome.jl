@@ -2,7 +2,7 @@ struct Receptor
     value::Float64
     scale::Float64
 end
-read(receptor::Receptor) = receptor.value
+Base.read(receptor::Receptor) = receptor.value
 write!(receptor::Receptor, val) = receptor.value = val * receptor.scale
 
 struct Gene

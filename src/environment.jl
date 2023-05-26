@@ -12,7 +12,7 @@ struct Dish{T <: AbstractCells} <: Environment
     matrix::Matrix{Int}
     edgeset::Set{Edge}
 end
-Dish(celltype::Type{T}, fieldsize::Integer) where T <: AbstractCells = Dish(celltype(), createcellmatrix(fieldsize), Set{Edge}())
+Dish(cells::AbstractCells, fieldsize::Integer) = Dish(cells, createcellmatrix(fieldsize), Set{Edge}())
 
 function createcellmatrix(fieldsize)
     m = zeros(Int, fieldsize, fieldsize)
@@ -25,17 +25,10 @@ function createcellmatrix(fieldsize)
     m
 end
 
-function spawncell!(env::Environment, tau::Int, cell_len::Integer)
+function spawncell!(env::Environment, tau::Int, cell_len::Integer, spawncenter=getrandompos(getmatrix(env), ceil(Int, cell_len / 2)))
     sigma = lastindex(getcells(env)) + 1
-    spawncenter = getrandompos(getmatrix(env), ceil(Int, cell_len / 2))
     area, bb = initcellpositions!(getmatrix(env), sigma, spawncenter, cell_len)
-    cellattrs = CellAttrs(
-        sigma,
-        tau,
-        area,
-        getcenter(bb)
-    )
-    push!(getcells(env).cellattrs, cellattrs)
+    push!(getcells(env), sigma, tau, area, getcenter(bb))
     union!(getedgeset(env), getedges(env, bb))
 end
 
@@ -71,8 +64,7 @@ function getedges(env::Environment, bb::BoundingBox)
     edges
 end
 
-function setupenv(envtype::Type{ET}, cellstype::Type{CT}, params) where {ET <: Environment, CT <: AbstractCells}
-    env = envtype(cellstype, params.fieldsize)
+function setupenv!(env::Environment, params)
     for tau in 1:params.taus
         for _ in 1:params.ncells[tau]
             spawncell!(env, tau, params.cell_length[tau])
@@ -80,7 +72,7 @@ function setupenv(envtype::Type{ET}, cellstype::Type{CT}, params) where {ET <: E
     env
 end
 
-function step(env::Environment, time::Integer, params)
+function step!(env::Environment, time::Integer, params)
     updatehamiltonian!(env, params)
     # Iterate the matrix and use the sigmas to calculate and update cell attributes
     # updateattributes!(cells)

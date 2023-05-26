@@ -5,8 +5,6 @@ struct Pos{T<:Number}
 end
 getx(pos::Pos) = pos.x
 gety(pos::Pos) = pos.y
-inbounds(pos::Pos, bounds::Tuple) = 0 < pos.x <= bounds[1] && 0 < pos.y <= bounds[2]
-filterinbounds(positions, bounds::Tuple) = filter(pos -> inbounds(pos, bounds), positions)
 
 "Often in CPM simulations positions are represented as matrix indices, so we provide this alias definition."
 const MatrixPos = Pos{Int}
@@ -28,45 +26,45 @@ function getrandompos(matrix::Matrix, borderpadding::Integer=0)
 end
 
 
-abstract type AbstractCounter end
-"Amount of time that must go by for a counter to fire."
-getcooldown(counter::AbstractCounter) = counter.cooldown
-"What time was the counter last reset (either automatically or manually)."
-getlasttime(counter::AbstractCounter) = counter.lasttime
+abstract type AbstractTimer end
+"Amount of time that must go by for a timer to fire."
+getcooldown(timer::AbstractTimer) = timer.cooldown
+"What time was the timer last reset (either automatically or manually)."
+getlasttime(timer::AbstractTimer) = timer.lasttime
 "How much time has elapsed between the last call to 'fire!()' or 'tick!()' 
-and the last time the counter was reset (either automatically or manually)."
-getelapsedtime(counter::AbstractCounter) = counter.elapsedtime
-"Whether the counter resets automatically after firing."
-autoresets(counter::AbstractCounter) = counter.autoreset
-isactive(counter::AbstractCounter) = counter.active
-setactive!(counter::AbstractCounter, val) = counter.active = val
-reset!(counter::AbstractCounter, now) = begin counter.elapsedtime = 0; counter.lasttime = now end
+and the last time the timer was reset (either automatically or manually)."
+getelapsedtime(timer::AbstractTimer) = timer.elapsedtime
+"Whether the timer resets automatically after firing."
+autoresets(timer::AbstractTimer) = timer.autoreset
+isactive(timer::AbstractTimer) = timer.active
+setactive!(timer::AbstractTimer, val) = timer.active = val
+reset!(timer::AbstractTimer, now) = begin timer.elapsedtime = 0; timer.lasttime = now end
 "Sets the couter to fire next 'fire!()' or 'tick!()' call."
-set!(counter::AbstractCounter) = counter.lasttime -= getcooldown(counter)
+set!(timer::AbstractTimer) = timer.lasttime -= getcooldown(timer)
 
-"Checks if it's time for the counter to fire.
+"Checks if it's time for the timer to fire.
 
-Returns 'true' if the elapsed time between 'now' and the last reset of the counter has surpassed the counter's cooldown."
-function fire!(counter::AbstractCounter, now)
-    elapsed = now - getlasttime(counter)
-    counter.elapsedtime = elapsed
-    if isactive(counter) && elapsed >= getcooldown(counter)
-        if autoresets(counter)
-            reset!(counter, now)
+Returns 'true' if the elapsed time between 'now' and the last reset of the timer has surpassed the timer's cooldown."
+function fire!(timer::AbstractTimer, now)
+    elapsed = now - getlasttime(timer)
+    timer.elapsedtime = elapsed
+    if isactive(timer) && elapsed >= getcooldown(timer)
+        if autoresets(timer)
+            reset!(timer, now)
         end
         return true
     end
     return false
 end
 
-"Updates the counter with the elapsed time since last update and checks if it's time to fire.
+"Updates the timer with the elapsed time since last update and checks if it's time to fire.
 
-Returns 'true' if the total elapsed time since the last reset of the counter (including this update's 'elapsed') has surpassed the counter's cooldown."
-function tick!(counter::AbstractCounter, elapsed)
-    fire!(counter, getlasttime(counter) + getelapsedtime(counter) + elapsed)
+Returns 'true' if the total elapsed time since the last reset of the timer (including this update's 'elapsed') has surpassed the timer's cooldown."
+function tick!(timer::AbstractTimer, elapsed)
+    fire!(timer, getlasttime(timer) + getelapsedtime(timer) + elapsed)
 end
 
-mutable struct Counter <: AbstractCounter
+mutable struct IterationTimer <: AbstractTimer
     cooldown::Int64
     elapsedtime::Int64
     lasttime::Int64
@@ -74,23 +72,23 @@ mutable struct Counter <: AbstractCounter
     active::Bool
 end
 
-function Counter(cooldown; 
+function IterationTimer(cooldown; 
                  set=false, 
                  elapsedtime=0, 
                  lasttime=0, 
                  autoreset=true, 
                  active=true)
-    counter = Counter(cooldown, elapsedtime, lasttime, autoreset, active)
+    timer = IterationTimer(cooldown, elapsedtime, lasttime, autoreset, active)
     if set
-        set!(counter)
+        set!(timer)
     end
-    counter
+    timer
 end
 
-"Handy method for 'tick!(counter, 1)' that is meant to be used every iteration of a loop."
-tick!(counter::Counter) = tick!(counter, 1)
+"Handy method for 'tick!(timer, 1)' that is meant to be used every iteration of a loop."
+tick!(timer::IterationTimer) = tick!(timer, 1)
 
-mutable struct Timer <: AbstractCounter
+mutable struct Timer <: AbstractTimer
     cooldown::Int64
     elapsedtime::Int64
     lasttime::Int64
@@ -135,4 +133,17 @@ end
 
 allsame(x) = all(y -> y == first(x), x)
 
-orderedpair(x1, x2) = x2 < x1 ? x2 => x1 : x1 => x2
+ordered(x1, x2) = x2 < x1 ? (x2, x1) : (x1, x2)
+
+function fullyconcrete(type::Type)
+    stack = Type[type]
+    while !isempty(stack)
+        t = pop!(stack)
+        if !isconcretetype(t)
+            return false
+        end
+        paramtypes = filter(pt -> pt isa Type, collect(t.parameters))
+        append!(stack, fieldtypes(t), paramtypes)
+    end
+    true
+end

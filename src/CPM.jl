@@ -1,6 +1,6 @@
 module CPM
 
-export main
+export run
 
 using Dates
 using Images
@@ -15,27 +15,33 @@ const PROJECT_HOME = dirname(dirname(@__FILE__))
 
 include("utils.jl")
 include("boundingbox.jl")
+include("genome.jl")
 include("cell.jl")
 include("parameters.jl")
 include("environment.jl")
 include("io.jl")
 
-"Entry point."
-function main(args=ARGS)
-    params = length(args) > 0 ? readparams(Parameters, args[1], args[2:end]) : Parameters()
-    runsimulation(Dish, Cells, params)
-end
+function Base.run(env::Environment, params, typechecks=true)
+    if typechecks
+        if !fullyconcrete(typeof(env))
+            @warn "'$env' may contain abstract fields in it's type hierarchy"
+        end
+        if !fullyconcrete(typeof(params))
+            @warn "'$params' may contain abstract fields in it's type hierarchy"
+        end
+    end
 
-function runsimulation(envtype::Type{ET}, cellstype::Type{CT}, params) where {ET <: Environment, CT <: AbstractCells}
+    starttime = now()
     makesimdirs(params.simdir, [params.imagesdirname], params.replaceprevsim)
 
+    setupenv!(env, params)
     outputobjs = setupoutput(params)
-    env = setupenv(envtype, cellstype, params)
     for i in 0:params.endsim
-        step(env, i, params)
+        step!(env, i, params)
         if i % params.outputperiod == 0
             output!(env, i, outputobjs..., params)
     end end
+    endmessage(env, starttime)
 end
  
 end # module CPM

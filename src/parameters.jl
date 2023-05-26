@@ -1,40 +1,9 @@
-abstract type AbstractParameters end
-
-"Parameters of the simulation."
-Base.@kwdef struct Parameters <: AbstractParameters
-    endsim::Int = 1000000
-    fieldsize::Int = 100
-    taus::Int = 1
-    ncells::Vector{Int} = [20]
-    cell_length::Vector{Int} = [5]
-    targetcellarea::Vector{Float64} = [50]
-    adhesiontable::Matrix{Float64} = hcat(8)
-    adhesionmedium::Vector{Float64} = [8]
-    cellcolors::Vector{RGB} = [colorant"gray"]
-    boltzmanntemp::Float64 = 12
-    sizelambda::Float64 = 1
-    borderenergy::Float64 = 100
-    simdir::String = "./runs/debug"
-    imagesdirname::String = "image"
-    replaceprevsim::Bool = false
-    imageplots::Vector{Symbol} = [:sigma]
-    savegif::Bool = false
-    outputperiod::Int = 10
-    infoperiod::Int = 1000
-    imageperiod::Int = 1000
-    displayframerate::Int = 30
-    displaysize::Int = 350
-    drawcellborders::Bool = true
-    drawcellcenters::Bool = false
-end
-
-"Read a parameters file into a type 'paramstype'. This type must implement a keyword constructor (using the 'Base.@kwdef' macro)."
-function readparams(paramstype::Type{T}, filepath, args) where T <: AbstractParameters
-    content = readresource(filepath) * '\n' * join(args, '\n')
-    parsable = replace(content, r"::.*(?==)" => "") # The type annotations on the file are decorative what matters is the struct types
-    parsed = Meta.parse("begin\n" * parsable * "\nend")
-    paramtup = NamedTuple(expr.args[1] => eval(expr.args[2]) for expr in parsed.args if expr isa Expr)
-    paramstype(; paramtup...)
+"Read a parameters file into a NamedTuple."
+function readparams(filepath)
+    contents = readresource(filepath)
+    parsable = Meta.parse("begin\n" * contents * "\nend")
+    exprs = filter(expr -> !isa(expr, LineNumberNode), parsable.args)
+    typednamedtuple(exprs)
 end
 
 function readresource(filepath)
@@ -48,3 +17,57 @@ function readresource(filepath)
         else
             rethrow()
 end end end
+
+macro typednamedtuple(ntexpr)
+    :($(typednamedtuple(ntexpr.args)))
+end
+
+function typednamedtuple(exprs)
+    pairs = []
+    for expr in exprs
+        symbol, type, val = assignmentelements(expr)
+        push!(pairs, symbol => convert(type,  val))
+    end
+    NamedTuple(pairs)
+end
+
+function assignmentelements(expr)
+    if expr.head !== :(=) || length(expr.args) != 2
+        throw("'expr' must be an assignment expression")
+    end
+
+    assigned, value = expr.args[1], eval(expr.args[2])
+    if assigned isa Symbol
+        return assigned, typeof(value), value
+    end
+    symbol, type = assigned.args
+    symbol, eval(type), value
+end
+
+"Default parameters of the simulation."
+const DEFAULTPARAMETERS = @typednamedtuple (
+    endsim::Int = 100000,
+    fieldsize::Int = 100,
+    taus::Int = 1,
+    ncells::Vector{Int} = [20],
+    cell_length::Vector{Int} = [5],
+    targetcellarea::Vector{Float64} = [50],
+    adhesiontable::Matrix{Float64} = hcat(8),
+    adhesionmedium::Vector{Float64} = [8],
+    cellcolors::Vector{RGB{N0f8}} = [colorant"gray"],
+    boltzmanntemp::Float64 = 12,
+    sizelambda::Float64 = 1,
+    borderenergy::Float64 = 100,
+    simdir::String = "./runs/debug",
+    imagesdirname::String = "image",
+    replaceprevsim::Bool = false,
+    imageplots::Vector{Symbol} = [:sigma],
+    savegif::Bool = false,
+    outputperiod::Int = 10,
+    infoperiod::Int = 1000,
+    imageperiod::Int = 1000,
+    displayframerate::Int = 30,
+    displaysize::Int = 350,
+    drawcellborders::Bool = true,
+    drawcellcenters::Bool = false
+)

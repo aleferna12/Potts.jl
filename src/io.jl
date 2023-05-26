@@ -4,8 +4,8 @@ const TAUCOLORS = [colorant"darkgray", colorant"lightgreen"]  # TODO: make param
 function setupoutput(params)
     outputobjs = (
         params.displayframerate > 0 ? makegui(length(params.imageplots), params.displaysize) : Dict(),
-        Counter(max(0, params.infoperiod), set=true, active=params.infoperiod > 0),
-        Counter(max(0, params.imageperiod), set=true, active=params.imageperiod > 0),
+        IterationTimer(max(0, params.infoperiod), set=true, active=params.infoperiod > 0),
+        IterationTimer(max(0, params.imageperiod), set=true, active=params.imageperiod > 0),
         Timer(Millisecond(max(0, round(1000 / params.displayframerate))), set=true, active=params.displayframerate > 0)
     )
     outputobjs
@@ -91,7 +91,7 @@ function drawcells!(img, matrix, colors::Vector)
     img[mask] = colors[matrix[mask]]
 end
 
-drawsigmas!(img, env) = drawcells!(img, getmatrix(env), [SIGMACOLORS[attrset.sigma % length(SIGMACOLORS) + 1] for attrset in getcells(env).cellattrs])
+drawsigmas!(img, env) = drawcells!(img, getmatrix(env), [SIGMACOLORS[sigma % length(SIGMACOLORS) + 1] for sigma in getsigmas(getcells(env))])
 drawtaus!(img, env, taucolors::Vector) = drawcells!(img, getmatrix(env), [taucolors[Int(attrset.tau)] for attrset in getcells(env).cellattrs])
 
 function drawcellborders!(img, env::Environment, color::RGB)
@@ -127,3 +127,22 @@ function makesimdirs(simdir, subdirs, replaceprevsim)
     for subdir in subdirs
         joinpath(simdir, subdir) |> mkpath
 end end
+
+function endmessage(env::Environment, starttime)
+    rnow = now()
+    message = "
+    Population:
+        Total: $(length(getcells(env)))
+    "
+    taus = gettaus(getcells(env))
+    for tau in unique(taus)
+        message *= "\tTau $tau: $(count(==(tau), taus))\n"
+    end
+
+    message *= "
+    Total run time: $(Time(0) + (rnow - starttime))
+    Start time: $starttime
+    End time: $rnow
+    "
+    print(replace(message, "\n    " => "\n"))
+end
