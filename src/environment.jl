@@ -65,91 +65,6 @@ function getedges(env::Environment, bb::BoundingBox)
     edges
 end
 
-function setupenv!(env::Environment, params)
-    for tau in 1:params.taus
-        for _ in 1:params.ncells[tau]
-            spawncell!(env, tau, params.cell_length[tau])
-    end end
-    env
-end
-
-function step!(env::Environment, time::Integer, params)
-    updatehamiltonian!(env, params)
-    # Iterate the matrix and use the sigmas to calculate and update cell attributes
-    # updateattributes!(cells)
-end
-
-function updatehamiltonian!(env::Environment, params)
-    # TODO: Check c++ code to understand how we used to do it
-    # I think they are adding to a 'loop' variable but this variable is an int and they are adding floats (so doing nothing essentially)
-    tovisit = length(getedgeset(env)) / 8  # 8 because moore_neighbors gives 8 neighbours
-    for _ in 1:ceil(tovisit)
-        edge = rand(getedgeset(env)) # TODO: this takes very long! Can it be optimized?
-        if getsigma(env, edge[1]) == getsigma(env, edge[2])
-            continue
-        end
-
-        dH = deltahamiltonian(env, edge, params)
-        if acceptcopy(dH, params.boltzmanntemp)
-            copyspin!(env, edge)
-end end end
-
-"Computes the local energy difference in case a lattice copy event (represented by an edge) occurs."
-function deltahamiltonian(env::Environment, copyattempt::Edge, params)
-    deltaH = 0.
-    sigma1, sigma2 = getsigma(env, copyattempt[1]), getsigma(env, copyattempt[2])
-    if sigma1 != 0
-        deltaH += deltaHsize(getarea(getcell(env, sigma1)), 1, params.targetcellarea[gettau(getcell(env, sigma1))], params.sizelambda)
-    end
-    if sigma2 != 0
-        deltaH += deltaHsize(getarea(getcell(env, sigma2)), -1, params.targetcellarea[gettau(getcell(env, sigma2))], params.sizelambda)
-    end
-    neighsigmas = [getsigma(env, nsig) for nsig in moore_neighbors(copyattempt[2])]
-    deltaH + deltaHadhenergy(env, sigma2, sigma1, neighsigmas, params)
-end
-
-deltaHsize(area, deltaarea, targetarea, sizelambda) = sizelambda * deltaarea * (2 * (area - targetarea) + deltaarea)
-
-function deltaHadhenergy(env,
-                         oldsigma,
-                         newsigma,
-                         neighsigmas,
-                         params)
-    energy = 0.
-    for neighsigma in neighsigmas
-        energy += getadhenergy(env, newsigma, neighsigma, params)
-        energy -= getadhenergy(env, oldsigma, neighsigma, params)
-    end
-    energy
-end
-
-function getadhenergy(env::Environment, sigma1::Integer, sigma2::Integer, params)::Float64
-    if sigma1 == sigma2
-        return 0.
-    end
-    sigma1, sigma2 = ordered(sigma1, sigma2)
-    if sigma1 < 0
-        return sigma2 == 0 ? 0. : params.borderenergy
-    elseif sigma1 == 0
-        return params.adhesionmedium[gettau(getcell(env, sigma2))]
-    end
-    params.adhesiontable[gettau(getcell(env, sigma1)), gettau(getcell(env, sigma2))] * 2
-end
-
-function acceptcopy(deltaH, bolzmanntemp)
-    if deltaH < 0
-        return true
-    end
-    rand() < ℯ^(-deltaH / bolzmanntemp)
-end
-
-function copyspin!(env::Environment, edge::Edge)
-    sigma1, sigma2 = getsigma(env, edge[1]), getsigma(env, edge[2])
-    setsigma(env, edge[2], sigma1)
-    updateattributes!(env, sigma2, sigma1, edge)
-    updateedges!(env, sigma1, edge[2])
-end
-
 function updateedges!(env::Environment, newsigma, pos)
     for neigh in moore_neighbors(pos)
         sigmaneigh = getsigma(env, neigh)
@@ -161,7 +76,7 @@ function updateedges!(env::Environment, newsigma, pos)
     end end
 end
 
-function updateattributes!(env::Environment, oldsigma, newsigma, edge::Edge)
+function updateattributes!(env::Environment, oldsigma, newsigma, edge)
     if newsigma != 0
         newcell = getcell(env, newsigma)
         addarea!(newcell, 1)

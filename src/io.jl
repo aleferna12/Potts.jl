@@ -1,22 +1,21 @@
 const SIGMACOLORS = [RGB(rand(3)...) for _ in 1:100]
 
-function setupoutput(params)
+function setupoutput(;displayframerate, infoperiod, imageperiod, imageplots, kwargs...)
     outputobjs = (
-        params.displayframerate > 0 ? makegui(length(params.imageplots), params.displaysize) : Dict(),
-        IterationTimer(max(0, params.infoperiod), set=true, active=params.infoperiod > 0),
-        IterationTimer(max(0, params.imageperiod), set=true, active=params.imageperiod > 0),
-        Timer(Millisecond(max(0, round(1000 / params.displayframerate))), set=true, active=params.displayframerate > 0)
+        displayframerate > 0 ? makegui(length(imageplots), displaysize) : Dict(),
+        IterationTimer(max(0, infoperiod), set=true, active=infoperiod > 0),
+        IterationTimer(max(0, imageperiod), set=true, active=imageperiod > 0),
+        Timer(Millisecond(max(0, round(1000 / displayframerate))), set=true, active=displayframerate > 0)
     )
     outputobjs
 end
 
-function output!(env,
+function output!(model::AbstractCPM,
                  time,
                  gui,
                  infocounter,
                  savecounter,
-                 displaytimer,
-                 params)
+                 displaytimer)
     if fire!(infocounter, time)
         println("Timestep: $time")
     end
@@ -24,10 +23,10 @@ function output!(env,
     savenow = fire!(savecounter, time)
     displaynow = fire!(displaytimer)
     if savenow || displaynow
-        imgdict = simulationimages(env, params.imageplots, params.cellcolors, params.drawcellborders, params.drawcellcenters)
+        imgdict = simulationimages(getenv(model), model[:imageplots], model[:cellcolors], model[:drawcellborders], model[:drawcellcenters])
         if savenow
-            dir = joinpath(params.simdir, params.imagesdirname)
-            if params.savegif
+            dir = joinpath(model[:simdir], model[:imagesdirname])
+            if model[:savegif]
                 save_simulationimages(imgdict, dir)
             else
                 save_simulationimages(imgdict, dir, time)
@@ -127,7 +126,8 @@ function makesimdirs(simdir, subdirs, replaceprevsim)
         joinpath(simdir, subdir) |> mkpath
 end end
 
-function endmessage(env::Environment, starttime)
+function endmessage(model::AbstractCPM, starttime)
+    env = getenv(model)
     rnow = now()
     message = "
     Population:
