@@ -3,10 +3,10 @@
 ###########
 
 # How many MCSs to run the simulation for
-endsim::Int = 50000
+endsim::Int = 20000
 
 # Side of the field
-fieldsize::Int = 50
+fieldsize::Int = 500
 
 ###################
 # Cell Properties #
@@ -16,7 +16,7 @@ fieldsize::Int = 50
 taus::Int = 2
 
 # Number of starting cells of each cell type
-ncells::Vector{Int} = [5, 1]
+ncells::Vector{Int} = [25, 10]
 
 # Starting cell length
 cell_length::Vector{Int} = [5, 45]

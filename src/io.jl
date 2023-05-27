@@ -1,5 +1,4 @@
 const SIGMACOLORS = [RGB(rand(3)...) for _ in 1:100]
-const TAUCOLORS = [colorant"darkgray", colorant"lightgreen"]  # TODO: make parameter
 
 function setupoutput(params)
     outputobjs = (
@@ -91,20 +90,20 @@ function drawcells!(img, matrix, colors::Vector)
     img[mask] = colors[matrix[mask]]
 end
 
-drawsigmas!(img, env) = drawcells!(img, getmatrix(env), [SIGMACOLORS[sigma % length(SIGMACOLORS) + 1] for sigma in getsigmas(getcells(env))])
-drawtaus!(img, env, taucolors::Vector) = drawcells!(img, getmatrix(env), [taucolors[Int(attrset.tau)] for attrset in getcells(env).cellattrs])
+drawsigmas!(img, env) = drawcells!(img, getmatrix(env), [SIGMACOLORS[sigma % length(SIGMACOLORS) + 1] for sigma in (getsigma(cell) for cell in getcells(env))])
+drawtaus!(img, env, taucolors::Vector) = drawcells!(img, getmatrix(env), [taucolors[tau] for tau in (gettau(cell) for cell in getcells(env))])
 
 function drawcellborders!(img, env::Environment, color::RGB)
     for edge in getedgeset(env)
         for pos in [edge[1], edge[2]]
             sigma = getmatrix(env)[pos]
-            if 1 ∉ [pos.x, pos.y] && sigma != 0 && (getmatrix(env)[pos.x - 1, pos.y] != sigma || getmatrix(env)[pos.x, pos.y - 1] != sigma)
+            if 1 ∉ [pos.x, pos.y] && sigma != 0 && (getmatrix(env)[getx(pos) - 1, gety(pos)] != sigma || getmatrix(env)[getx(pos), gety(pos) - 1] != sigma)
                 img[pos] = color
 end end end end
 
 function drawcellcenters!(img, cells, color)
-    for center in getcenters(cells)
-        img[round(Int, center.x), round(Int, center.y)] = color
+    for center in (getcenter(cell) for cell in cells)
+        img[round(Int, getx(center)), round(Int, gety(center))] = color
     end
 end
 
@@ -134,7 +133,7 @@ function endmessage(env::Environment, starttime)
     Population:
         Total: $(length(getcells(env)))
     "
-    taus = gettaus(getcells(env))
+    taus = (gettau(cell) for cell in getcells(env))
     for tau in unique(taus)
         message *= "\tTau $tau: $(count(==(tau), taus))\n"
     end

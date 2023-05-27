@@ -1,18 +1,19 @@
 "Somewhere where cells can live."
 abstract type Environment end
 getcells(env::Environment) = env.cells
+getcell(env::Environment, sigma) = getcells(env)[sigma]
 getmatrix(env::Environment) = env.matrix
 getedgeset(env::Environment) = env.edgeset
 getsigma(env::Environment, pos::MatrixPos) = getmatrix(env)[pos]
 setsigma(env::Environment, pos::MatrixPos, val) = getmatrix(env)[pos] = val
 
 "A simple petri dish with not much going on."
-struct Dish{T <: AbstractCells} <: Environment
-    cells::T
+struct Dish{T <: AbstractCell} <: Environment
+    cells::Vector{T}
     matrix::Matrix{Int}
     edgeset::Set{Edge}
 end
-Dish(cells::AbstractCells, fieldsize::Integer) = Dish(cells, createcellmatrix(fieldsize), Set{Edge}())
+Dish(celltype::Type{T}, fieldsize::Integer) where T <: AbstractCell = Dish(celltype[], createcellmatrix(fieldsize), Set{Edge}())
 
 function createcellmatrix(fieldsize)
     m = zeros(Int, fieldsize, fieldsize)
@@ -28,7 +29,7 @@ end
 function spawncell!(env::Environment, tau::Int, cell_len::Integer, spawncenter=getrandompos(getmatrix(env), ceil(Int, cell_len / 2)))
     sigma = lastindex(getcells(env)) + 1
     area, bb = initcellpositions!(getmatrix(env), sigma, spawncenter, cell_len)
-    push!(getcells(env), sigma, tau, area, getcenter(bb))
+    push!(getcells(env), Cell(sigma, tau, area, getcenter(bb)))
     union!(getedgeset(env), getedges(env, bb))
 end
 
@@ -96,33 +97,43 @@ end end end
 "Computes the local energy difference in case a lattice copy event (represented by an edge) occurs."
 function deltahamiltonian(env::Environment, copyattempt::Edge, params)
     deltaH = 0.
-    cells = getcells(env)
-    sigma1, sigma2 = getmatrix(env)[[copyattempt...]]
+    sigma1, sigma2 = getsigma(env, copyattempt[1]), getsigma(env, copyattempt[2])
     if sigma1 != 0
-        deltaH += deltaHsize(getarea(cells, sigma1), 1, params.targetcellarea[gettau(cells, sigma1)], params.sizelambda)
+        deltaH += deltaHsize(getarea(getcell(env, sigma1)), 1, params.targetcellarea[gettau(getcell(env, sigma1))], params.sizelambda)
     end
     if sigma2 != 0
-        deltaH += deltaHsize(getarea(cells, sigma2), -1, params.targetcellarea[gettau(cells, sigma2)], params.sizelambda)
+        deltaH += deltaHsize(getarea(getcell(env, sigma2)), -1, params.targetcellarea[gettau(getcell(env, sigma2))], params.sizelambda)
     end
     neighsigmas = [getsigma(env, nsig) for nsig in moore_neighbors(copyattempt[2])]
-    deltaH + deltaHadhenergy(cells, sigma2, sigma1, neighsigmas, params.adhesiontable, params.adhesionmedium, params.borderenergy)
+    deltaH + deltaHadhenergy(env, sigma2, sigma1, neighsigmas, params)
 end
 
 deltaHsize(area, deltaarea, targetarea, sizelambda) = sizelambda * deltaarea * (2 * (area - targetarea) + deltaarea)
 
-function deltaHadhenergy(cells,
+function deltaHadhenergy(env,
                          oldsigma,
                          newsigma,
                          neighsigmas,
-                         adhesiontable,
-                         adhesionmedium,
-                         borderenergy)
+                         params)
     energy = 0.
     for neighsigma in neighsigmas
-        energy += getadhenergy(cells, newsigma, neighsigma, adhesiontable, adhesionmedium, borderenergy)
-        energy -= getadhenergy(cells, oldsigma, neighsigma, adhesiontable, adhesionmedium, borderenergy)
+        energy += getadhenergy(env, newsigma, neighsigma, params)
+        energy -= getadhenergy(env, oldsigma, neighsigma, params)
     end
     energy
+end
+
+function getadhenergy(env::Environment, sigma1::Integer, sigma2::Integer, params)::Float64
+    if sigma1 == sigma2
+        return 0.
+    end
+    sigma1, sigma2 = ordered(sigma1, sigma2)
+    if sigma1 < 0
+        return sigma2 == 0 ? 0. : params.borderenergy
+    elseif sigma1 == 0
+        return params.adhesionmedium[gettau(getcell(env, sigma2))]
+    end
+    params.adhesiontable[gettau(getcell(env, sigma1)), gettau(getcell(env, sigma2))] * 2
 end
 
 function acceptcopy(deltaH, bolzmanntemp)
@@ -135,8 +146,7 @@ end
 function copyspin!(env::Environment, edge::Edge)
     sigma1, sigma2 = getsigma(env, edge[1]), getsigma(env, edge[2])
     setsigma(env, edge[2], sigma1)
-    updateattributes!(getcells(env), sigma2, sigma1, edge)
-
+    updateattributes!(env, sigma2, sigma1, edge)
     updateedges!(env, sigma1, edge[2])
 end
 
@@ -151,17 +161,15 @@ function updateedges!(env::Environment, newsigma, pos)
     end end
 end
 
-function updateattributes!(cells::AbstractCells, oldsigma, newsigma, edge::Edge)
+function updateattributes!(env::Environment, oldsigma, newsigma, edge::Edge)
     if newsigma != 0
-        newarea = addarea!(cells, newsigma, 1)
-        center = cells.cellattrs[newsigma].center
-        cells.cellattrs[newsigma].center = Pos(center.x + (edge[2].x - center.x) / newarea,
-                                               center.y + (edge[2].y - center.y) / newarea)
+        newcell = getcell(env, newsigma)
+        addarea!(newcell, 1)
+        addmomentum!(newcell, edge[2])
     end
     if oldsigma != 0
-        newarea = addarea!(cells, oldsigma, -1)
-        center = cells.cellattrs[oldsigma].center
-        cells.cellattrs[oldsigma].center = Pos(center.x + (edge[2].x - center.x) / newarea,
-                                               center.y + (edge[2].y - center.y) / newarea)
+        oldcell = getcell(env, oldsigma)
+        addarea!(oldcell, -1)
+        removemomentum!(oldcell, edge[2])
     end
 end
