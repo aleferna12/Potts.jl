@@ -1,32 +1,10 @@
-abstract type AbstractCPM end
+abstract type AbstractCPM{ET <: Environment} end
 Base.getindex(model::AbstractCPM, param::Symbol) = getparam(model, param)
-
-struct CPM{ET, PT} <: AbstractCPM where ET <: Environment
-    env::ET
-    params::PT
-
-    function CPM(env, params, typecheck::Bool=true)
-        if typecheck
-            if !fullyconcrete(typeof(env))
-                @warn "'$env' may contain abstract fields in it's type hierarchy"
-            end
-            if !fullyconcrete(typeof(params))
-                @warn "'$params' may contain abstract fields in it's type hierarchy"
-            end
-        end
-        new{typeof(env), typeof(params)}(env, params)
-    end
-end
-"Gets the environment associated with the model."
-getenv(model::CPM) = model.env
-"Gets all parameters stored in the model as a NamedTuple."
-getparams(model::CPM) = model.params
-getparam(model::CPM, param::Symbol) = getproperty(getparams(model), param)
 
 function setup!(model::AbstractCPM)
     for tau in 1:model[:taus]
         for _ in 1:model[:ncells][tau]
-            spawncell!(getenv(model), tau, model[:cell_length][tau])
+            spawncell!(getenv(model), tau, model[:cell_length][tau], model[:divtime][tau])
 end end end
 
 function step!(model::AbstractCPM, time::Integer)
@@ -48,7 +26,7 @@ function updatehamiltonian!(model::AbstractCPM)
 
         dH = deltahamiltonian(model, edge)
         if acceptcopy(dH, model[:boltzmanntemp])
-            copyspin!(env, edge)
+            copyspin!(env, edge) # TODO: this takes very long! Can it be optimized?
 end end end
 
 "Computes the local energy difference in case a lattice copy event (represented by an edge) occurs."
@@ -106,3 +84,25 @@ function copyspin!(env::Environment, edge::Edge)
     updateattributes!(env, sigma2, sigma1, edge)
     updateedges!(env, sigma1, edge[2])
 end
+
+struct CPM{ET, PT} <: AbstractCPM{ET}
+    env::ET
+    params::PT
+
+    function CPM(env, params, typecheck::Bool=true)
+        if typecheck
+            if !fullyconcrete(typeof(env))
+                @warn "'$env' may contain abstract fields in it's type hierarchy"
+            end
+            if !fullyconcrete(typeof(params))
+                @warn "'$params' may contain abstract fields in it's type hierarchy"
+            end
+        end
+        new{typeof(env), typeof(params)}(env, params)
+    end
+end
+"Gets the environment associated with the model."
+getenv(model::CPM) = model.env
+"Gets all parameters stored in the model as a NamedTuple."
+getparams(model::CPM) = model.params
+getparam(model::CPM, param::Symbol) = getproperty(getparams(model), param)

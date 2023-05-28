@@ -11,13 +11,14 @@ const MatrixPos = Pos{Int}
 Base.getindex(array::Array, pos::MatrixPos) = array[pos.x, pos.y]
 Base.setindex!(array::Array, value, pos::MatrixPos) = array[pos.x, pos.y] = value
 Base.checkindex(::Type{Bool}, inds::AbstractUnitRange, index::MatrixPos) = 0 < index.x * index.y <= length(inds)
-getadjacentx(pos::MatrixPos) = [MatrixPos(pos.x - 1, pos.y), MatrixPos(pos.x + 1, pos.y)]
-getadjacenty(pos::MatrixPos) = [MatrixPos(pos.x, pos.y - 1), MatrixPos(pos.x, pos.y + 1)]
-vonneumann_neighbors(pos::MatrixPos) = [getadjacentx(pos); getadjacenty(pos)]
-moore_neighbors(pos::MatrixPos) = [vonneumann_neighbors(pos); [MatrixPos(pos.x - 1, pos.y - 1),
-                                                               MatrixPos(pos.x - 1, pos.y + 1),
-                                                               MatrixPos(pos.x + 1, pos.y - 1),
-                                                               MatrixPos(pos.x + 1, pos.y + 1)]]
+moore_neighbors(pos::MatrixPos) = [MatrixPos(pos.x - 1, pos.y),
+                                   MatrixPos(pos.x + 1, pos.y),
+                                   MatrixPos(pos.x, pos.y - 1),
+                                   MatrixPos(pos.x, pos.y + 1),
+                                   MatrixPos(pos.x - 1, pos.y - 1),
+                                   MatrixPos(pos.x - 1, pos.y + 1),
+                                   MatrixPos(pos.x + 1, pos.y - 1),
+                                   MatrixPos(pos.x + 1, pos.y + 1)]
 
 function getrandompos(matrix::Matrix, borderpadding::Integer=0)
     xrange = range(1 + borderpadding, size(matrix)[1] - borderpadding)
@@ -27,28 +28,80 @@ end
 
 
 abstract type AbstractTimer end
-"Amount of time that must go by for a timer to fire."
-getcooldown(timer::AbstractTimer) = timer.cooldown
-"What time was the timer last reset (either automatically or manually)."
-getlasttime(timer::AbstractTimer) = timer.lasttime
-"How much time has elapsed between the last call to 'fire!()' or 'tick!()' 
-and the last time the timer was reset (either automatically or manually)."
-getelapsedtime(timer::AbstractTimer) = timer.elapsedtime
 "Whether the timer resets automatically after firing."
 autoresets(timer::AbstractTimer) = timer.autoreset
 isactive(timer::AbstractTimer) = timer.active
-setactive!(timer::AbstractTimer, val) = timer.active = val
-reset!(timer::AbstractTimer, now) = begin timer.elapsedtime = 0; timer.lasttime = now end
-"Sets the couter to fire next 'fire!()' or 'tick!()' call."
-set!(timer::AbstractTimer) = timer.lasttime -= getcooldown(timer)
+activate!(timer::AbstractTimer) = timer.active = true
+deactivate!(timer::AbstractTimer) = timer.active = false
 
-"Checks if it's time for the timer to fire.
+mutable struct IterationTimer <: AbstractTimer
+    cooldown::Int64
+    elapsed::Int64
+    autoreset::Bool
+    active::Bool
+end
+function IterationTimer(cooldown; 
+                        set=false, 
+                        elapsedtime=0,
+                        autoreset=true, 
+                        active=true)
+    timer = IterationTimer(cooldown, elapsedtime, autoreset, active)
+    if set
+        set!(timer)
+    end
+    timer
+end
+"Amount of time that must go by for a timer to fire."
+getcooldown(timer::IterationTimer) = timer.cooldown
+"How many iterations have elapsed between the last call to 'fire!()' 
+and the last time the timer was reset (either automatically or manually)."
+getelapsed(timer::IterationTimer) = timer.elapsed
+reset!(timer::IterationTimer) = timer.elapsed = 0
+"Sets the timer to fire next 'fire!()' call."
+set!(timer::IterationTimer) = timer.elapsed = getcooldown(timer)
 
-Returns 'true' if the elapsed time between 'now' and the last reset of the timer has surpassed the timer's cooldown."
-function fire!(timer::AbstractTimer, now)
-    elapsed = now - getlasttime(timer)
-    timer.elapsedtime = elapsed
-    if isactive(timer) && elapsed >= getcooldown(timer)
+"Returns 'true' if it's time for the timer to fire and 'false' otherwise."
+function fire!(timer::IterationTimer, elapsed=1)
+    timer.elapsed += elapsed
+    if isactive(timer) && getelapsed(timer) >= getcooldown(timer)
+        if autoresets(timer)
+            reset!(timer)
+        end
+        return true
+    end
+    return false
+end
+
+mutable struct Timer <: AbstractTimer
+    cooldown::Int64
+    lastreset::Int64
+    autoreset::Bool
+    active::Bool
+    Timer(cooldown, lastreset, autoreset, active) = new(in_ns(cooldown), in_ns(lastreset), autoreset, active)
+end
+function Timer(cooldown;
+               set=false, 
+               lastreset=time_ns(), 
+               autoreset=true, 
+               active=true) 
+    timer = Timer(cooldown, lastreset, autoreset, active)
+    if set
+        set!(timer)
+    end
+    timer
+end
+"Amount of time that must go by for a timer to fire."
+getcooldown(timer::Timer) = timer.cooldown
+"What time was the timer last reset (either automatically or manually)."
+getlastreset(timer::Timer) = timer.lastreset
+
+reset!(timer::Timer, now=time_ns()) = timer.lastreset = now
+"Sets the timer to fire next 'fire!()' call."
+set!(timer::Timer, now=time_ns()) = timer.lastreset = now - getcooldown(timer)
+
+"Returns 'true' if it's time for the timer to fire and 'false' otherwise."
+function fire!(timer::Timer, now=time_ns())
+    if isactive(timer) && now - getlastreset(timer) >= getcooldown(timer)
         if autoresets(timer)
             reset!(timer, now)
         end
@@ -56,65 +109,6 @@ function fire!(timer::AbstractTimer, now)
     end
     return false
 end
-
-"Updates the timer with the elapsed time since last update and checks if it's time to fire.
-
-Returns 'true' if the total elapsed time since the last reset of the timer (including this update's 'elapsed') has surpassed the timer's cooldown."
-function tick!(timer::AbstractTimer, elapsed)
-    fire!(timer, getlasttime(timer) + getelapsedtime(timer) + elapsed)
-end
-
-mutable struct IterationTimer <: AbstractTimer
-    cooldown::Int64
-    elapsedtime::Int64
-    lasttime::Int64
-    autoreset::Bool
-    active::Bool
-end
-
-function IterationTimer(cooldown; 
-                 set=false, 
-                 elapsedtime=0, 
-                 lasttime=0, 
-                 autoreset=true, 
-                 active=true)
-    timer = IterationTimer(cooldown, elapsedtime, lasttime, autoreset, active)
-    if set
-        set!(timer)
-    end
-    timer
-end
-
-"Handy method for 'tick!(timer, 1)' that is meant to be used every iteration of a loop."
-tick!(timer::IterationTimer) = tick!(timer, 1)
-
-mutable struct Timer <: AbstractTimer
-    cooldown::Int64
-    elapsedtime::Int64
-    lasttime::Int64
-    autoreset::Bool
-    active::Bool
-    Timer(cooldown, elapsedtime, lasttime, autoreset, active) = new(in_ns(cooldown), in_ns(elapsedtime), in_ns(lasttime), autoreset, active)
-end
-
-function Timer(cooldown;
-               set=false, 
-               elapsedtime=0, 
-               lasttime=time_ns(), 
-               autoreset=true, 
-               active=true) 
-    timer = Timer(cooldown, elapsedtime, lasttime, autoreset, active)
-    if set
-        set!(timer)
-    end
-    timer
-end
-
-reset!(timer::Timer) = reset!(timer, time_ns())
-fire!(timer::Timer, now::Period) = fire!(timer, in_ns(now))
-"Handy method for 'fire!(timer, time_ns())'."
-fire!(timer::Timer) = fire!(timer, time_ns())
-tick!(timer::Timer, elapsed::Period) = tick!(timer, in_ns(elapsed))
 
 in_ns(time::Real) = time
 in_ns(time) = Dates.tons(time)

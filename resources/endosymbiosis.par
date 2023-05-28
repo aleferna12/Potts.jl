@@ -3,10 +3,13 @@
 ###########
 
 # How many MCSs to run the simulation for
-endsim::Int = 20000
+endsim::Int = 100000
 
 # Side of the field
-fieldsize::Int = 500
+fieldsize::Int = 50
+
+# Seed used for the random number generator
+seed::Int = 1
 
 ###################
 # Cell Properties #
@@ -16,13 +19,16 @@ fieldsize::Int = 500
 taus::Int = 2
 
 # Number of starting cells of each cell type
-ncells::Vector{Int} = [25, 10]
+ncells::Vector{Int} = [5, 1]
 
 # Starting cell length
 cell_length::Vector{Int} = [5, 45]
 
 # Target area for each cell type
 targetcellarea::Vector{Float64} = [50, 900]
+
+# Target area for each cell type during division
+divtargetcellarea::Vector{Float64} = [0, 0]
 
 # Adhesion energy of a cell with the medium for each cell type
 adhesionmedium::Vector{Float64} = [64, 8]
@@ -80,13 +86,13 @@ infoperiod::Int = 1000
 
 # How often in MCSs, (+ 'outputperiod') we save an image (or frame if 'savegif' is true) of the simulation
 # Non-positive values disable this feature
-imageperiod::Int = -1000
+imageperiod::Int = 1000
 
 # Framerate for the display updates (in real life time)
 # Non-positive values disable this feature
 # Low framerate may result in an unresponsive window
 # This parameter is also affected by 'outputperiod'
-displayframerate::Int = -15
+displayframerate::Int = 15
 
 # How big is the window of the real-time display
 displaysize::Int = 350

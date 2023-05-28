@@ -23,6 +23,7 @@ include("io.jl")
 include("parameters.jl")
 
 function Base.run(model::AbstractCPM)
+    seed!(model[:seed])
     starttime = now()
     makesimdirs(model[:simdir], [model[:imagesdirname]], model[:replaceprevsim])
 

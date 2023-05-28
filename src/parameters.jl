@@ -33,7 +33,7 @@ end
 
 function assignmentelements(expr)
     if expr.head !== :(=) || length(expr.args) != 2
-        throw("'expr' must be an assignment expression")
+        error("'expr' must be an assignment expression")
     end
 
     assigned, value = expr.args[1], eval(expr.args[2])
@@ -44,14 +44,34 @@ function assignmentelements(expr)
     symbol, eval(type), value
 end
 
-"Default parameters of the simulation."
-const DEFAULTPARAMETERS = @typednamedtuple (
+"Reassigns one or more existing symbols in a NamedTuple to new values.
+The value is converted to the type specified in the corresponding NamedTuple field.
+This operation is slow and involves reconstructing the NamedTuple."
+function reassign(nt::NamedTuple; kwargs...)
+    converted = []
+    for (name, value) in kwargs
+        if !in(name, keys(nt))
+            error("symbol '$name' was not found in $nt")
+        end
+
+        push!(converted, name => convert(typeof(nt[name]), value))
+    end
+    (;nt..., converted...)
+end
+
+reassign(nt::NamedTuple, kwargs::NamedTuple) = reassign(nt; kwargs...)
+
+"Default parameters for a base model."
+defaultparams(::Type{CPM}) = @typednamedtuple (
     endsim::Int = 100000,
     fieldsize::Int = 100,
+    seed::Int = 1,  # Test
     taus::Int = 1,
     ncells::Vector{Int} = [20],
     cell_length::Vector{Int} = [5],
     targetcellarea::Vector{Float64} = [50],
+    divtargetcellarea::Vector{Float64} = [75], # TODO: add to endosymbiosis.par
+    divtime::Vector{Int} = [200],
     adhesiontable::Matrix{Float64} = hcat(8),
     adhesionmedium::Vector{Float64} = [8],
     cellcolors::Vector{RGB{N0f8}} = [colorant"gray"],
@@ -71,3 +91,6 @@ const DEFAULTPARAMETERS = @typednamedtuple (
     drawcellborders::Bool = true,
     drawcellcenters::Bool = false
 )
+
+"Default parameters for a model using EvolvableCells."
+# defaultparams(::Type{EvolvableCell}) = merge(defaultparams(CPM), @typednamedtuple((a=2,)))

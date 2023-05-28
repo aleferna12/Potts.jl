@@ -1,6 +1,6 @@
 const SIGMACOLORS = [RGB(rand(3)...) for _ in 1:100]
 
-function setupoutput(;displayframerate, infoperiod, imageperiod, imageplots, kwargs...)
+function setupoutput(;infoperiod, imageperiod, imageplots, displayframerate, displaysize, kwargs...)
     outputobjs = (
         displayframerate > 0 ? makegui(length(imageplots), displaysize) : Dict(),
         IterationTimer(max(0, infoperiod), set=true, active=infoperiod > 0),
@@ -49,7 +49,7 @@ function simulationimages(env::Environment, plots::Vector{Symbol}, cellcolors, d
             drawcellborders!(img, env, colorant"black")
         end
         if drawcellcenters
-            drawcellcenters!(img, getcells(env), colorant"red")
+            drawcellcenters!(img, livingcells(env), colorant"red")
         end
         imgdict[plot] = img[end:-1:1, :]
     end
@@ -89,8 +89,8 @@ function drawcells!(img, matrix, colors::Vector)
     img[mask] = colors[matrix[mask]]
 end
 
-drawsigmas!(img, env) = drawcells!(img, getmatrix(env), [SIGMACOLORS[sigma % length(SIGMACOLORS) + 1] for sigma in (getsigma(cell) for cell in getcells(env))])
-drawtaus!(img, env, taucolors::Vector) = drawcells!(img, getmatrix(env), [taucolors[tau] for tau in (gettau(cell) for cell in getcells(env))])
+drawsigmas!(img, env) = drawcells!(img, getmatrix(env), [SIGMACOLORS[sigma % length(SIGMACOLORS) + 1] for sigma in (getsigma(cell) for cell in livingcells(env))])
+drawtaus!(img, env, taucolors::Vector) = drawcells!(img, getmatrix(env), [taucolors[tau] for tau in (gettau(cell) for cell in livingcells(env))])
 
 function drawcellborders!(img, env::Environment, color::RGB)
     for edge in getedgeset(env)
@@ -131,9 +131,9 @@ function endmessage(model::AbstractCPM, starttime)
     rnow = now()
     message = "
     Population:
-        Total: $(length(getcells(env)))
+        Total: $(length(livingcells(env)))
     "
-    taus = (gettau(cell) for cell in getcells(env))
+    taus = (gettau(cell) for cell in livingcells(env))
     for tau in unique(taus)
         message *= "\tTau $tau: $(count(==(tau), taus))\n"
     end
