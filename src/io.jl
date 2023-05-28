@@ -1,40 +1,47 @@
 const SIGMACOLORS = [RGB(rand(3)...) for _ in 1:100]
 
-function setupoutput(;infoperiod, imageperiod, imageplots, displayframerate, displaysize, kwargs...)
+function setupoutput(;outputperiod, infoperiod, imageperiod, imageplots, displayframerate, displaysize, kwargs...)
     outputobjs = (
-        displayframerate > 0 ? makegui(length(imageplots), displaysize) : Dict(),
-        IterationTimer(max(0, infoperiod), set=true, active=infoperiod > 0),
-        IterationTimer(max(0, imageperiod), set=true, active=imageperiod > 0),
-        Timer(Millisecond(max(0, round(1000 / displayframerate))), set=true, active=displayframerate > 0)
+        IterationTimer(outputperiod, set=true, active=outputperiod > 0),
+        IterationTimer(infoperiod, set=true, active=infoperiod > 0, autoreset=false),
+        IterationTimer(imageperiod, set=true, active=imageperiod > 0, autoreset=false),
+        Timer(Millisecond(max(0, round(1000 / displayframerate))), set=true, active=displayframerate > 0, autoreset=false),
+        displayframerate > 0 ? makegui(length(imageplots), displaysize) : Dict()
     )
     outputobjs
 end
 
 function output!(model::AbstractCPM,
                  time,
-                 gui,
+                 outcounter,
                  infocounter,
                  savecounter,
-                 displaytimer)
-    if fire!(infocounter, time)
-        println("Timestep: $time")
-    end
-
-    savenow = fire!(savecounter, time)
+                 displaytimer,
+                 gui)
+    infonow = fire!(infocounter)
+    savenow = fire!(savecounter)
     displaynow = fire!(displaytimer)
-    if savenow || displaynow
-        imgdict = simulationimages(getenv(model), model[:imageplots], model[:cellcolors], model[:drawcellborders], model[:drawcellcenters])
-        if savenow
-            dir = joinpath(model[:simdir], model[:imagesdirname])
-            if model[:savegif]
-                save_simulationimages(imgdict, dir)
-            else
-                save_simulationimages(imgdict, dir, time)
-        end end
-        if displaynow
-            display_simulationimages(imgdict, gui)
-    end end
-end
+    if fire!(outcounter)
+        if infonow
+            println("Timestep: $time")
+            reset!(infocounter)
+        end
+        if savenow || displaynow
+            imgdict = simulationimages(getenv(model), model[:imageplots], model[:cellcolors], model[:drawcellborders], model[:drawcellcenters])
+            if savenow
+                dir = joinpath(model[:simdir], model[:imagesdirname])
+                if model[:savegif]
+                    save_simulationimages(imgdict, dir)
+                else
+                    save_simulationimages(imgdict, dir, time)
+                end
+                reset!(savecounter)
+            end
+            if displaynow
+                display_simulationimages(imgdict, gui)
+                reset!(displaytimer)
+            end
+end end end
 
 function simulationimages(env::Environment, plots::Vector{Symbol}, cellcolors, drawcellborders, drawcellcenters)
     imgdict = Dict{Symbol, Matrix}()
@@ -131,7 +138,7 @@ function endmessage(model::AbstractCPM, starttime)
     rnow = now()
     message = "
     Population:
-        Total: $(length(livingcells(env)))
+        Total: $(length(collect(livingcells(env))))
     "
     taus = (gettau(cell) for cell in livingcells(env))
     for tau in unique(taus)

@@ -31,9 +31,8 @@ function Base.run(model::AbstractCPM)
     outputobjs = setupoutput(;getparams(model)...)
     for i in 0:model[:endsim]
         step!(model, i)
-        if i % model[:outputperiod] == 0
-            output!(model, i, outputobjs...)
-    end end
+        output!(model, i, outputobjs...)
+    end
     endmessage(model, starttime)
 end
  

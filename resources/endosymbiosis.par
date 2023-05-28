@@ -3,56 +3,59 @@
 ###########
 
 # How many MCSs to run the simulation for
-endsim::Int = 100000
+endsim::Integer = 100000
 
 # Side of the field
-fieldsize::Int = 50
+fieldsize::Integer = 50
 
 # Seed used for the random number generator
-seed::Int = 1
+seed::Integer = 1
 
 ###################
 # Cell Properties #
 ###################
 
 # How many cell types there are (must match the length of cell property vectors).
-taus::Int = 2
+taus::Integer = 2
 
 # Number of starting cells of each cell type
-ncells::Vector{Int} = [5, 1]
+ncells::Vector{Integer} = [5, 1]
 
 # Starting cell length
-cell_length::Vector{Int} = [5, 45]
+cell_length::Vector{Integer} = [5, 45]
 
 # Target area for each cell type
-targetcellarea::Vector{Float64} = [50, 900]
+targetcellarea::Vector{Real} = [50, 900]
 
 # Target area for each cell type during division
-divtargetcellarea::Vector{Float64} = [0, 0]
+divtargetcellarea::Vector{Real} = [0, 0]
+
+# How long does it take for each cell type to divide
+divtime::Vector{Integer} = [0, 0]
 
 # Adhesion energy of a cell with the medium for each cell type
-adhesionmedium::Vector{Float64} = [64, 8]
+adhesionmedium::Vector{Real} = [64, 8]
 
 # Symmetric table used to determine cell-cell adhesion energy
 # The indices are the cell types of cells
-adhesiontable::Matrix{Float64} = [64 4; 4 16]
+adhesiontable::Matrix{Real} = [64 4; 4 16]
 
 # Color of each cell type used for the :tau 'imageplot'.
 # Colors.jl syntax can be used
-cellcolors::Vector{RGB{N0f8}} = [colorant"lightgreen", colorant"gray"]
+cellcolors::Vector{RGB} = [colorant"lightgreen", colorant"gray"]
 
 ###############
 # Hamiltonian #
 ###############
 
 # Temperature controling the 'thermodynamic' behaviour of the system
-boltzmanntemp::Float64 = 12
+boltzmanntemp::Real = 12
 
 # Size constraint scale (how strongly cells deviating from 'targetcellarea' are penalized)
-sizelambda::Float64 = 1
+sizelambda::Real = 1
 
 # Energy on the interface with a border site
-borderenergy::Float64 = 100
+borderenergy::Real = 100
 
 ##########
 # Output #
@@ -78,24 +81,24 @@ savegif = true
 # How many MCSs must have passed before we try to save any output of the simulation
 # Can be used to remove overhead of output functions
 # Non-positive values disable this feature
-outputperiod::Int = 10
+outputperiod::Integer = 10
 
 # How often in MCSs (+ 'outputperiod') to display information about the simulation on the console
 # Non-positive values disable this feature
-infoperiod::Int = 1000
+infoperiod::Integer = 1000
 
 # How often in MCSs, (+ 'outputperiod') we save an image (or frame if 'savegif' is true) of the simulation
 # Non-positive values disable this feature
-imageperiod::Int = 1000
+imageperiod::Integer = 1000
 
 # Framerate for the display updates (in real life time)
 # Non-positive values disable this feature
 # Low framerate may result in an unresponsive window
 # This parameter is also affected by 'outputperiod'
-displayframerate::Int = 15
+displayframerate::Integer = 15
 
 # How big is the window of the real-time display
-displaysize::Int = 350
+displaysize::Integer = 350
 
 # Whether to draw borders between cells
 drawcellborders = true
