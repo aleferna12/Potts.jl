@@ -1,5 +1,7 @@
 "Abstract type representing a cell. This interface assumes some fields are implemented."
 abstract type AbstractCell end
+# TODO: try getting rid of the abstract getters and writing a macro similar to Lazy.@forward
+#       then measure performance against current implementation
 getsigma(cell::AbstractCell) = cell.sigma
 gettau(cell::AbstractCell) = cell.tau
 getcenter(cell::AbstractCell) = cell.center

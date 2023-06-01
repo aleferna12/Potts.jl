@@ -1,6 +1,6 @@
 module Potts
 
-export run
+export run, defaultparams, readparams, CPM, Dish, Cell, EvolvableCell
 
 using Dates
 using Images
@@ -15,6 +15,8 @@ const PROJECT_HOME = dirname(dirname(@__FILE__))
 
 include("constants.jl")
 include("utils.jl")
+include("timer.jl")
+include("pos.jl")
 include("boundingbox.jl")
 include("genome.jl")
 include("cell.jl")
