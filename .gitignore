@@ -1,2 +1,2 @@
-runs/*
-/resources/testparams.jl
+runs
+resources/local

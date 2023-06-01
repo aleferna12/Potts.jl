@@ -19,19 +19,20 @@ seed::Integer = 1
 taus::Integer = 2
 
 # Number of starting cells of each cell type
-ncells::Vector{Integer} = [5, 1]
+ncells::Vector{Integer} = [2, 1]
 
 # Starting cell length
 cell_length::Vector{Integer} = [5, 45]
 
 # Target area for each cell type
-targetcellarea::Vector{Real} = [50, 900]
+targetcellarea::Vector{Real} = [25, 900]
 
 # Target area for each cell type during division
-divtargetcellarea::Vector{Real} = [0, 0]
+divtargetcellarea::Vector{Real} = [50, 0]
 
 # How long does it take for each cell type to divide
-divtime::Vector{Integer} = [0, 0]
+# Non-positive values disable cell division
+divtime::Vector{Integer} = [30000, 0]
 
 # Adhesion energy of a cell with the medium for each cell type
 adhesionmedium::Vector{Real} = [64, 8]

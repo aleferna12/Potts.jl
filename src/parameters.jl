@@ -59,8 +59,6 @@ function reassign(nt::NamedTuple; kwargs...)
     (;nt..., converted...)
 end
 
-reassign(nt::NamedTuple, kwargs::NamedTuple) = reassign(nt; kwargs...)
-
 "Default parameters for a base model."
 defaultparams(::Type{CPM}) = @typednamedtuple (
     endsim::Int = 100000,
@@ -70,8 +68,8 @@ defaultparams(::Type{CPM}) = @typednamedtuple (
     ncells::Vector{Int} = [20],
     cell_length::Vector{Int} = [5],
     targetcellarea::Vector{Float64} = [50],
-    divtargetcellarea::Vector{Float64} = [75], # TODO: add to endosymbiosis.par
-    divtime::Vector{Int} = [200],
+    divtargetcellarea::Vector{Float64} = [100],
+    divtime::Vector{Int} = [1000],
     adhesiontable::Matrix{Float64} = hcat(8),
     adhesionmedium::Vector{Float64} = [8],
     cellcolors::Vector{RGB{N0f8}} = [colorant"gray"],

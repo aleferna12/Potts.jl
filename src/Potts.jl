@@ -13,6 +13,7 @@ import Gtk
 
 const PROJECT_HOME = dirname(dirname(@__FILE__))
 
+include("constants.jl")
 include("utils.jl")
 include("boundingbox.jl")
 include("genome.jl")
@@ -30,7 +31,7 @@ function Base.run(model::AbstractCPM)
     setup!(model)
     outputobjs = setupoutput(;getparams(model)...)
     for i in 0:model[:endsim]
-        step!(model, i)
+        step!(model)
         output!(model, i, outputobjs...)
     end
     endmessage(model, starttime)

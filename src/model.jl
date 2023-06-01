@@ -4,13 +4,20 @@ Base.getindex(model::AbstractCPM, param::Symbol) = getparam(model, param)
 function setup!(model::AbstractCPM)
     for tau in 1:model[:taus]
         for _ in 1:model[:ncells][tau]
-            spawncell!(getenv(model), tau, model[:cell_length][tau], model[:divtime][tau])
+            divtime = model[:divtime][tau]
+            spawncell!(getenv(model),
+                       model[:cell_length][tau], 
+                       tau=tau, 
+                       targetarea=model[:targetcellarea][tau],
+                       divtimer=IterationTimer(divtime, active=divtime > 0))
 end end end
 
-function step!(model::AbstractCPM, time::Integer)
+function step!(model::AbstractCPM)
     updatehamiltonian!(model)
-    # Iterate the matrix and use the sigmas to calculate and update cell attributes
-    # updateattributes!(cells)
+    # TODO: benchmark looping over cells once and doing all of this
+    updateattributes!(getenv(model), model[:targetcellarea], model[:divtargetcellarea])
+    select!(getenv(model)) # Has to be done first otherwise we might try to breed dead cells
+    reproduce!(getenv(model))
 end
 
 function updatehamiltonian!(model::AbstractCPM)
@@ -34,11 +41,13 @@ function deltahamiltonian(model::AbstractCPM, copyattempt::Edge)
     env = getenv(model)
     deltaH = 0.
     sigma1, sigma2 = getsigma(env, copyattempt[1]), getsigma(env, copyattempt[2])
-    if sigma1 != 0
-        deltaH += deltaHsize(getarea(getcell(env, sigma1)), 1, model[:targetcellarea][gettau(getcell(env, sigma1))], model[:sizelambda])
+    if sigma1 != MED
+        cell = getcell(env, sigma1)
+        deltaH += deltaHsize(getarea(cell), 1, gettargetarea(cell), model[:sizelambda])
     end
-    if sigma2 != 0
-        deltaH += deltaHsize(getarea(getcell(env, sigma2)), -1, model[:targetcellarea][gettau(getcell(env, sigma2))], model[:sizelambda])
+    if sigma2 != MED
+        cell = getcell(env, sigma2)
+        deltaH += deltaHsize(getarea(cell), -1, gettargetarea(cell), model[:sizelambda])
     end
     neighsigmas = [getsigma(env, nsig) for nsig in moore_neighbors(copyattempt[2])]
     deltaH + deltaHadhenergy(model, sigma2, sigma1, neighsigmas)
@@ -63,13 +72,15 @@ function getadhenergy(model::AbstractCPM, sigma1::Integer, sigma2::Integer)::Flo
         return 0.
     end
     sigma1, sigma2 = ordered(sigma1, sigma2)
-    if sigma1 < 0
-        return sigma2 == 0 ? 0. : model[:borderenergy]
-    elseif sigma1 == 0
+    if sigma1 == BORDER
+        return sigma2 == MED ? 0. : model[:borderenergy]
+    elseif sigma1 == MED
         return model[:adhesionmedium][gettau(getcell(getenv(model), sigma2))]
     end
-    model[:adhesiontable][gettau(getcell(getenv(model), sigma1)), gettau(getcell(getenv(model), sigma2))] * 2
+    celladhenergy(getcell(getenv(model), sigma1), getcell(getenv(model), sigma2), model[:adhesiontable])
 end
+
+celladhenergy(cell1::AbstractCell, cell2::AbstractCell, adhesiontable) = adhesiontable[gettau(cell1), gettau(cell2)] * 2
 
 function acceptcopy(deltaH, bolzmanntemp)
     if deltaH < 0
@@ -80,10 +91,33 @@ end
 
 function copyspin!(env::Environment, edge::Edge)
     sigma1, sigma2 = getsigma(env, edge[1]), getsigma(env, edge[2])
-    setsigma(env, edge[2], sigma1)
-    updateattributes!(env, sigma2, sigma1, edge)
-    updateedges!(env, sigma1, edge[2])
+    setsigma!(env, edge[2], sigma1)
+    shiftattributes!(env, sigma2, sigma1, edge)
+    updateedges!(env, edge[2])
 end
+
+function shiftattributes!(env::Environment, oldsigma, newsigma, edge)
+    if newsigma > 0
+        newcell = getcell(env, newsigma)
+        addarea!(newcell, 1)
+        addmomentum!(newcell, edge[2])
+    end
+    if oldsigma > 0
+        oldcell = getcell(env, oldsigma)
+        addarea!(oldcell, -1)
+        removemomentum!(oldcell, edge[2])
+end end
+
+"Updates any stale edges around 'pos'."
+function updateedges!(env::Environment, pos::MatrixPos)
+    sigmapos = getsigma(env, pos)
+    for neigh in moore_neighbors(pos)
+        sigmaneigh = getsigma(env, neigh)
+        if sigmapos == sigmaneigh
+            removeedges!(getedgeset(env), pos, neigh)
+        elseif sigmaneigh != BORDER
+            addedges!(getedgeset(env), pos, neigh)
+end end end
 
 struct CPM{ET, PT} <: AbstractCPM{ET}
     env::ET

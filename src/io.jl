@@ -1,4 +1,4 @@
-const SIGMACOLORS = [RGB(rand(3)...) for _ in 1:100]
+const SIGMACOLORS = [RGB(rand(3)...) for _ in 1:1000] # 1000 is not enough
 
 function setupoutput(;outputperiod, infoperiod, imageperiod, imageplots, displayframerate, displaysize, kwargs...)
     outputobjs = (
@@ -89,21 +89,23 @@ function display_simulationimages(imgdict, gui)
 end
 
 function drawcells!(img, matrix, color::RGB)
-    img[matrix .> 0] .= color
+    img[getmatrix(matrix) .> 0] .= color
 end
-function drawcells!(img, matrix, colors::Vector)
+function drawcells!(img, env::Environment, colors::Vector)
+    matrix = getmatrix(env)
     mask = matrix .> 0
+    matrix[mask]
     img[mask] = colors[matrix[mask]]
 end
 
-drawsigmas!(img, env) = drawcells!(img, getmatrix(env), [SIGMACOLORS[sigma % length(SIGMACOLORS) + 1] for sigma in (getsigma(cell) for cell in livingcells(env))])
-drawtaus!(img, env, taucolors::Vector) = drawcells!(img, getmatrix(env), [taucolors[tau] for tau in (gettau(cell) for cell in livingcells(env))])
+drawsigmas!(img, env) = drawcells!(img, env, SIGMACOLORS)
+drawtaus!(img, env, taucolors::Vector) = drawcells!(img, env, [taucolors[tau] for tau in (gettau(cell) for cell in getcells(env))])
 
 function drawcellborders!(img, env::Environment, color::RGB)
     for edge in getedgeset(env)
         for pos in [edge[1], edge[2]]
             sigma = getmatrix(env)[pos]
-            if 1 ∉ [pos.x, pos.y] && sigma != 0 && (getmatrix(env)[getx(pos) - 1, gety(pos)] != sigma || getmatrix(env)[getx(pos), gety(pos) - 1] != sigma)
+            if 1 ∉ [getx(pos), gety(pos)] && sigma != 0 && (getsigma(env, Pos(getx(pos) - 1, gety(pos))) != sigma || getsigma(env, Pos(getx(pos), gety(pos) - 1)) != sigma)
                 img[pos] = color
 end end end end
 

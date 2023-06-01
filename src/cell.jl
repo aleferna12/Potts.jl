@@ -7,8 +7,14 @@ setcenter!(cell::AbstractCell, val) = cell.center = val
 getarea(cell::AbstractCell) = cell.area
 setarea!(cell::AbstractCell, val) = cell.area = val
 addarea!(cell::AbstractCell, val) = setarea!(cell, getarea(cell) + val)
+gettargetarea(cell::AbstractCell) = cell.targetarea
+settargetarea!(cell::AbstractCell, val) = cell.targetarea = val
 isalive(cell::AbstractCell) = cell.alive
+kill!(cell::AbstractCell) = cell.alive = false
+growthperc(cell::AbstractCell) = getcooldown(cell.divtimer) == 0 ? 0. : getelapsed(cell.divtimer) / getcooldown(cell.divtimer)
 isdividing(cell::AbstractCell) = isactive(cell.divtimer)
+getdivtime(cell::AbstractCell) = getcooldown(cell.divtimer)
+dividenow!(cell::AbstractCell) = fire!(cell.divtimer)
 startdividing!(cell::AbstractCell) = begin activate!(cell.divtimer); reset!(cell.divtimer) end
 stopdividing!(cell::AbstractCell) = deactivate!(cell.divtimer)
 
@@ -27,25 +33,25 @@ function removemomentum!(cell::AbstractCell, vec::Pos)
     setcenter!(cell, newcenter)
 end
 
-mutable struct Cell <: AbstractCell
+Base.@kwdef mutable struct Cell <: AbstractCell
     sigma::Int
     tau::Int
     area::Int
+    targetarea::Float64
     center::Pos{Float64}
-    alive::Bool
+    alive::Bool = true
     divtimer::IterationTimer
 end
-Cell(sigma, tau, area, center, divtime) = Cell(sigma, tau, area, center, true, IterationTimer(divtime))
 
 abstract type AbstractEvolvableCell <: AbstractCell end
 
-mutable struct EvolvableCell <: AbstractEvolvableCell
+Base.@kwdef mutable struct EvolvableCell <: AbstractEvolvableCell
     sigma::Int
     tau::Int
     area::Int
+    targetarea::Float64
     center::Pos{Float64}
-    alive::Bool
-    div::Bool
+    alive::Bool = true
     divtimer::IterationTimer
     genome::Genome
 end
