@@ -24,6 +24,7 @@ include("environment.jl")
 include("model.jl")
 include("io.jl")
 include("parameters.jl")
+include("managefood.jl")
 
 function Base.run(model::AbstractCPM)
     seed!(model[:seed])
