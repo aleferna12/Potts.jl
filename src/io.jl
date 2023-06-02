@@ -1,4 +1,4 @@
-const SIGMACOLORS = [RGB(rand(3)...) for _ in 1:1000] # 1000 is not enough
+const SIGMACOLORS = [RGB(rand(3)...) for _ in 1:2000] # 1000 is not enough
 
 function setupoutput(;outputperiod, infoperiod, imageperiod, imageplots, displayframerate, displaysize, kwargs...)
     outputobjs = (

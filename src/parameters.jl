@@ -91,4 +91,9 @@ defaultparams(::Type{CPM}) = @typednamedtuple (
 )
 
 "Default parameters for a model using EvolvableCells."
-# defaultparams(::Type{EvolvableCell}) = merge(defaultparams(CPM), @typednamedtuple((a=2,)))
+defaultparams(::Type{EvolvableCell}) = merge(defaultparams(CPM), @typednamedtuple((
+    nreceptors::Int = 2,
+    nreggenes::Int = 3,
+    noutgenes::Int = 1,
+    receptorscale::Vector{Float64} = [1, 1]
+)))

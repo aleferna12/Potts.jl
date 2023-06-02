@@ -1,14 +1,5 @@
-"Somewhere where cells can live. This interface assumes some fields are implemented."
+"Somewhere where cells can live."
 abstract type Environment{T <: AbstractCell} end
-"Returns a vector of all cells in the environment (both dead and alive)."
-getcells(env::Environment) = env.cells
-getcell(env::Environment, sigma) = getcells(env)[sigma]
-"Returns an iterable of cells living in the environment."
-livingcells(env::Environment) = (cell for cell in getcells(env) if isalive(cell))
-getmatrix(env::Environment) = env.matrix
-getedgeset(env::Environment) = env.edgeset
-getsigma(env::Environment, pos::MatrixPos) = getmatrix(env)[pos]
-setsigma!(env::Environment, pos::MatrixPos, val) = getmatrix(env)[pos] = val
 
 function nextsigma(env::Environment)
     for (i, cell) in enumerate(getcells(env))  
@@ -139,6 +130,15 @@ struct Dish{T} <: Environment{T}
     edgeset::Set{Edge}
 end
 Dish(celltype::Type{T}, fieldsize::Integer) where T <: AbstractCell = Dish(celltype[], createcellmatrix(fieldsize), Set{Edge}())
+"Returns a vector of all cells in the environment (both dead and alive)."
+getcells(dish::Dish) = dish.cells
+getcell(dish::Dish, sigma) = getcells(dish)[sigma]
+getmatrix(dish::Dish) = dish.matrix
+"Returns an iterable of cells living in the environment."
+livingcells(dish::Dish) = (cell for cell in getcells(dish) if isalive(cell))
+getedgeset(dish::Dish) = dish.edgeset
+getsigma(dish::Dish, pos::MatrixPos) = getmatrix(dish)[pos]
+setsigma!(dish::Dish, pos::MatrixPos, val) = getmatrix(dish)[pos] = val
 
 struct CellPosIter
     sigma::Int

@@ -16,8 +16,7 @@ getarea(bb::BoundingBox) = getsidex(bb) * getsidey(bb)
 getvertices(bb::BoundingBox) = [bb.minpos, MatrixPos(bb.minpos.x, bb.maxpos.y), bb.maxpos, MatrixPos(bb.maxpos.x, bb.minpos.y)]
 getcenter(bb::BoundingBox) = Pos((bb.minpos.x + bb.maxpos.x) / 2, (bb.minpos.y + bb.maxpos.y) / 2)
 "Iterate over every position inside of the BoundingBox."
-iterpositions(bb::BoundingBox) = (MatrixPos(x, y) for x in bb.minpos.x:bb.maxpos.x, 
-                                                      y in bb.minpos.y:bb.maxpos.y)
+iterpositions(bb::BoundingBox) = (MatrixPos(x, y) for x in bb.minpos.x:bb.maxpos.x for y in bb.minpos.y:bb.maxpos.y)
 function iterouterpositions(bb::BoundingBox)
     if getsidex(bb) < 3 || getsidey(bb) < 3
         return iterpositions(bb)
@@ -48,6 +47,7 @@ struct OuterPosIter
 end
 Base.length(opi::OuterPosIter) = 2 * (opi.lengthx + opi.lengthy) - 4
 
+# Somewhat an ugly solution but is orders of magnitude faster than using Iterators.flatten on four iters
 function Base.iterate(opi::OuterPosIter, state=(curpos=opi.minpos, dir=:up))
     dir, curpos = state.dir, state.curpos
     if dir === :left
