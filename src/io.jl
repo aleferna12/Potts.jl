@@ -41,7 +41,9 @@ function output!(model::AbstractCPM,
                 display_simulationimages(imgdict, gui)
                 reset!(displaytimer)
             end
-end end end
+    end end
+    nothing
+end
 
 function simulationimages(env::Environment, plots::Vector{Symbol}, cellcolors, drawcellborders, drawcellcenters)
     imgdict = Dict{Symbol, Matrix}()

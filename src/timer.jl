@@ -41,7 +41,7 @@ function fire!(timer::IterationTimer, elapsed=1)
         end
         return true
     end
-    return false
+    false
 end
 
 mutable struct Timer <: AbstractTimer

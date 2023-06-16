@@ -14,3 +14,8 @@ function fullyconcrete(type::Type)
     end
     true
 end
+
+function warntype(type::Type)
+    if !fullyconcrete(type)
+        @warn "'$type' may contain abstract fields in it's type hierarchy"
+end end

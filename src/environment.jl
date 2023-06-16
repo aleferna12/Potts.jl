@@ -26,10 +26,11 @@ function addcell!(env::Environment, cell::AbstractCell)
     else
         getcells(env)[getsigma(cell)] = cell
     end
+    nothing
 end
 
-"Spawn a cell from a set of positions. This is used when a cell is divinding."
-function spawncell!(env::Environment{CT}, positions; cellkwargs...) where CT
+"Spawn a cell on a set of specified positions."
+function spawncell!(env::Environment{CT}, positions; cellkwargs...) where {CT <: AbstractCell}
     sigma = nextsigma(env)
     area = length(positions)
     centerx = mean(getx(pos) for pos in positions)
@@ -43,11 +44,11 @@ function spawncell!(env::Environment{CT}, positions; cellkwargs...) where CT
     newcell
 end
 
-"Spawns a square-shaped cell on free positions on the matrix. This is used during the model setup."
-function spawncell!(env::Environment,
-                    cell_len::Integer,
-                    spawncenter=getrandompos(getmatrix(env), ceil(Int, cell_len / 2));
-                    cellkwargs...)
+"Initializes a square-shaped cell on free positions on the matrix. This is used during the model setup."
+function initcell!(env::Environment,
+                   cell_len::Integer,
+                   spawncenter::MatrixPos;
+                   cellkwargs...)
     bb = BoundingBox(MatrixPos(getx(spawncenter) - floor(cell_len / 2), 
                                gety(spawncenter) - floor(cell_len / 2)),
                      MatrixPos(getx(spawncenter) + ceil(cell_len / 2) - 1, 
@@ -108,20 +109,17 @@ end end end end
 
 "Divides a cell in two. If the cell is too small this function won't do anything."
 function dividecell!(env::Environment, cell::AbstractCell)
-    center = getcenter(cell)
-    m = tan(rand() * 2π)
-    n = gety(center) - m * getx(center)
-    cellpositions = iterpositions(env, cell)
-    newpositions = [pos for pos in cellpositions if whichside(m, n, pos) == -1]
+    oldpositions, newpositions = split(iterpositions(env, cell))
 
-    if !isempty(newpositions) && length(newpositions) < getarea(cell)
+    if !isempty(oldpositions) && !isempty(newpositions)
         spawncell!(env, newpositions, tau=gettau(cell), targetarea=gettargetarea(cell), divtimer=IterationTimer(getdivtime(cell)))
 
         # Update old cell's attributes
         for pos in newpositions
-            addarea!(cell, -1)
-            removemomentum!(cell, pos)
-end end end
+            losepos!(cell, pos)
+    end end
+    nothing
+end
 
 "A simple petri dish with not much going on."
 struct Dish{T} <: Environment{T}

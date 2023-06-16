@@ -9,10 +9,38 @@ Base.round(postype::Type, pos::Pos) = postype(round(getx(pos)), round(gety(pos))
 Base.round(pos::Pos) = round(typeof(pos), pos)
 Base.convert(postype::Type{<:Pos}, pos::NTuple{2}) = postype(pos[1], pos[2])
 
-"Determines on which side of a line (specified by 'm' and 'n') a point lies. Returns 1 for 'up' or 'left' and -1 otherwise."
-function whichside(m, n, pos::Pos)
+"Returns true if the position lies above a line specified by 'm' and 'n' and false otherwise."
+function isabove(pos::Pos, m, n)
     y = m * getx(pos) + n
-    sign(gety(pos) - y)
+    gety(pos) - y > 0
+end
+
+"Splits the positions in two vectors, those above and below the line defined by 'm' and 'n'."
+function split(positions, m, n)
+    above, below = MatrixPos[], MatrixPos[]
+    for pos in positions
+        if isabove(pos, m, n)
+            push!(above, pos)
+        else
+            push!(below, pos)
+    end end
+    above, below
+end
+
+function split(positions)
+    center = getcenter(positions)
+    m = tan(rand() * 2π)
+    n = gety(center) - m * getx(center)
+    split(positions, m, n)
+end
+
+function getcenter(positions)
+    centerx, centery = 0., 0.
+    for pos in positions
+        centerx += getx(pos)
+        centery += gety(pos)
+    end
+    Pos(centerx / length(positions), centery/length(positions))
 end
 
 "Often in CPM simulations positions are represented as matrix indices, so we provide this alias definition."

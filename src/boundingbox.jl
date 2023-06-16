@@ -68,9 +68,9 @@ function Base.iterate(opi::OuterPosIter, state=(curpos=opi.minpos, dir=:up))
         end
         return curpos, (curpos=MatrixPos(getx(curpos) + 1, gety(curpos)), dir=:right)
     end
-    if dir === :down
-        if gety(curpos) - gety(opi.minpos) <= 0
-            return curpos, (curpos=MatrixPos(getx(curpos) - 1, gety(curpos)), dir=:left)
-        end
-        return curpos, (curpos=MatrixPos(getx(curpos), gety(curpos) - 1), dir=:down)
-end end
+    # dir === :down
+    if gety(curpos) - gety(opi.minpos) <= 0
+        return curpos, (curpos=MatrixPos(getx(curpos) - 1, gety(curpos)), dir=:left)
+    end
+    return curpos, (curpos=MatrixPos(getx(curpos), gety(curpos) - 1), dir=:down)
+end

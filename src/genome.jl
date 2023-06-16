@@ -34,8 +34,8 @@ struct Genome
     outgenes::Vector{OutGene}
     weights::Vector{Float64}
 end
-function Genome(nreceptors::Integer, nreggenes::Integer, noutgenes::Integer, scale::Float64)
-    recep = [Receptor(i, 0, scale) for i in 1:nreceptors]
+function Genome(nreceptors::Integer, nreggenes::Integer, noutgenes::Integer, recepscales)
+    recep = [Receptor(i, 0, recepscales[i]) for i in 1:nreceptors]
     reg = [RegGene(i, -1, -1, 2 * rand() - 1) for i in 1:nreggenes]
     out = [OutGene(i, -1, -1, 2 * rand() - 1) for i in 1:noutgenes]
     Genome(recep, reg, out, [(2 * rand() - 1) for _ in range(1, nreggenes * (nreceptors + nreggenes + noutgenes))])

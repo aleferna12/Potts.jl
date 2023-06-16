@@ -63,7 +63,7 @@ end
 defaultparams(::Type{CPM}) = @typednamedtuple (
     endsim::Int = 100000,
     fieldsize::Int = 100,
-    seed::Int = 1,  # Test
+    seed::Int = 1,  # This is not working properly
     taus::Int = 1,
     ncells::Vector{Int} = [20],
     cell_length::Vector{Int} = [5],
@@ -89,11 +89,3 @@ defaultparams(::Type{CPM}) = @typednamedtuple (
     drawcellborders::Bool = true,
     drawcellcenters::Bool = false
 )
-
-"Default parameters for a model using EvolvableCells."
-defaultparams(::Type{EvolvableCell}) = merge(defaultparams(CPM), @typednamedtuple((
-    nreceptors::Int = 2,
-    nreggenes::Int = 3,
-    noutgenes::Int = 1,
-    receptorscale::Vector{Float64} = [1, 1]
-)))

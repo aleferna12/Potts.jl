@@ -3,20 +3,21 @@ Base.getindex(model::AbstractCPM, param::Symbol) = getparam(model, param)
 
 function setup!(model::AbstractCPM)
     for tau in 1:model[:taus]
+        cell_len = model[:cell_length][tau]
         for _ in 1:model[:ncells][tau]
             divtime = model[:divtime][tau]
-            spawncell!(getenv(model),
-                       model[:cell_length][tau], 
-                       tau=tau, 
-                       targetarea=model[:targetcellarea][tau],
-                       divtimer=IterationTimer(divtime, active=divtime > 0))
+            initcell!(getenv(model),
+                      cell_len,
+                      getrandompos(getmatrix(getenv(model)), ceil(Int, cell_len / 2)),
+                      tau=tau, 
+                      targetarea=model[:targetcellarea][tau],
+                      divtimer=IterationTimer(divtime, active=divtime > 0))
 end end end
 
 function step!(model::AbstractCPM)
     updatehamiltonian!(model)
-    # TODO: benchmark looping over cells once and doing all of this
     updateattributes!(getenv(model), model[:targetcellarea], model[:divtargetcellarea])
-    select!(getenv(model)) # Has to be done first otherwise we might try to breed dead cells
+    select!(getenv(model))
     reproduce!(getenv(model))
 end
 
@@ -92,21 +93,19 @@ end
 function copyspin!(env::Environment, edge::Edge)
     sigma1, sigma2 = getsigma(env, edge[1]), getsigma(env, edge[2])
     setsigma!(env, edge[2], sigma1)
-    shiftattributes!(env, sigma2, sigma1, edge)
+    exchangepos!(env, sigma2, sigma1, edge)
     updateedges!(env, edge[2])
 end
 
-function shiftattributes!(env::Environment, oldsigma, newsigma, edge)
+function exchangepos!(env::Environment, oldsigma, newsigma, edge)
     if newsigma > 0
-        newcell = getcell(env, newsigma)
-        addarea!(newcell, 1)
-        addmomentum!(newcell, edge[2])
+        gainpos!(getcell(env, newsigma), edge[2])
     end
     if oldsigma > 0
-        oldcell = getcell(env, oldsigma)
-        addarea!(oldcell, -1)
-        removemomentum!(oldcell, edge[2])
-end end
+        losepos!(getcell(env, oldsigma), edge[2])
+    end
+    nothing
+end
 
 "Updates any stale edges around 'pos'."
 function updateedges!(env::Environment, pos::MatrixPos)
@@ -125,12 +124,8 @@ struct CPM{ET, PT} <: AbstractCPM{ET}
 
     function CPM(env, params, typecheck::Bool=true)
         if typecheck
-            if !fullyconcrete(typeof(env))
-                @warn "'$env' may contain abstract fields in it's type hierarchy"
-            end
-            if !fullyconcrete(typeof(params))
-                @warn "'$params' may contain abstract fields in it's type hierarchy"
-            end
+            warntype(typeof(env))
+            warntype(typeof(params))
         end
         new{typeof(env), typeof(params)}(env, params)
     end

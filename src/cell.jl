@@ -20,7 +20,6 @@ dividenow!(cell::AbstractCell) = fire!(cell.divtimer)
 startdividing!(cell::AbstractCell) = begin activate!(cell.divtimer); reset!(cell.divtimer) end
 stopdividing!(cell::AbstractCell) = deactivate!(cell.divtimer)
 
-
 function addmomentum!(cell::AbstractCell, vec::Pos)
     center = getcenter(cell)
     newcenter = Pos(getx(center) + (getx(vec) - getx(center)) / getarea(cell),
@@ -35,6 +34,18 @@ function removemomentum!(cell::AbstractCell, vec::Pos)
     setcenter!(cell, newcenter)
 end
 
+function gainpos!(cell::AbstractCell, pos::MatrixPos)
+    addarea!(cell, 1)
+    addmomentum!(cell, pos)
+end
+
+function losepos!(cell::AbstractCell, pos::MatrixPos)
+    addarea!(cell, -1)
+    removemomentum!(cell, pos)
+end
+
+abstract type EvolvableCell <: AbstractCell end
+
 Base.@kwdef mutable struct Cell <: AbstractCell
     sigma::Int
     tau::Int
@@ -43,17 +54,4 @@ Base.@kwdef mutable struct Cell <: AbstractCell
     center::Pos{Float64}
     alive::Bool = true
     divtimer::IterationTimer
-end
-
-abstract type AbstractEvolvableCell <: AbstractCell end
-
-Base.@kwdef mutable struct EvolvableCell <: AbstractEvolvableCell
-    sigma::Int
-    tau::Int
-    area::Int
-    targetarea::Float64
-    center::Pos{Float64}
-    alive::Bool = true
-    divtimer::IterationTimer
-    genome::Genome
 end
