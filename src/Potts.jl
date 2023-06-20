@@ -1,12 +1,13 @@
 module Potts
 
-export run, defaultparams, readparams, CPM, Dish, Cell, EvolvableCell
+export DEFAULTPARAMS, run, readparams, CPM, Dish, Cell, EvolvableCell
 
 using Dates
 using Images
 using ImageView
 
 using Statistics: mean
+using Distributions: Normal
 using Random: randperm, seed!
 
 import Gtk

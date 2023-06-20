@@ -90,8 +90,8 @@ function display_simulationimages(imgdict, gui)
     sleep(0.000001) # This is the time frame in which the user can interact with the display
 end
 
-function drawcells!(img, matrix, color::RGB)
-    img[getmatrix(matrix) .> 0] .= color
+function drawcells!(img, env, color::RGB)
+    img[getmatrix(env) .> 0] .= color
 end
 function drawcells!(img, env::Environment, colors::Vector)
     matrix = getmatrix(env)

@@ -21,6 +21,13 @@ function step!(model::AbstractCPM)
     reproduce!(getenv(model))
 end
 
+function step!(model::AbstractCPM{<:Environment{<:EvolvableCell}})
+    updatehamiltonian!(model)
+    updateattributes!(getenv(model), model[:targetcellarea], model[:divtargetcellarea])
+    select!(getenv(model))
+    reproduce!(getenv(model), mu=model[:mu], mustd=model[:mustd])
+end
+
 function updatehamiltonian!(model::AbstractCPM)
     # TODO: Check c++ code to understand how we used to do it
     # I think they are adding to a 'loop' variable but this variable is an int and they are adding floats (so doing nothing essentially)

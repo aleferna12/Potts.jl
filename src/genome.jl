@@ -36,28 +36,46 @@ struct Genome
 end
 function Genome(nreceptors::Integer, nreggenes::Integer, noutgenes::Integer, recepscales)
     recep = [Receptor(i, 0, recepscales[i]) for i in 1:nreceptors]
-    reg = [RegGene(i, -1, -1, 2 * rand() - 1) for i in 1:nreggenes]
-    out = [OutGene(i, -1, -1, 2 * rand() - 1) for i in 1:noutgenes]
+    reg = [RegGene(i, 0, 0, 2 * rand() - 1) for i in 1:nreggenes]
+    out = [OutGene(i, 0, 0, 2 * rand() - 1) for i in 1:noutgenes]
     Genome(recep, reg, out, [(2 * rand() - 1) for _ in range(1, nreggenes * (nreceptors + nreggenes + noutgenes))])
 end
 getreceptors(genome::Genome) = genome.receptors
 getreggenes(genome::Genome) = genome.reggenes
 getoutgenes(genome::Genome) = genome.outgenes
 
+function indexweight(genome::Genome, source::Receptor, target::RegGene)
+    length(getreceptors(genome)) * (target.id - 1) + source.id
+end
+
+function indexweight(genome::Genome, source::RegGene, target::RegGene)
+    nreg = length(getreggenes(genome))
+    nreg * length(getreceptors(genome)) + nreg * (target.id - 1) + source.id
+end
+
+function indexweight(genome::Genome, source::RegGene, target::OutGene)
+    nreg = length(getreggenes(genome))
+    nreg * length(getreceptors(genome)) + nreg ^ 2 +  length(getoutgenes(genome)) * (target.id - 1) + source.id
+end
+
 "Returns the weight of the influence of 'source' on the expression state of 'target'."
-function getweight(genome::Genome, source::Receptor, target::RegGene)
-    nrecep = length(getreceptors(genome))
-    genome.weights[nrecep * (target.id - 1) + source.id]
+function getweight(genome::Genome, source, target)
+    genome.weights[indexweight(genome, source, target)]
 end
 
-function getweight(genome::Genome, source::RegGene, target::RegGene)
-    nrecep, nreg = length(getreceptors(genome)), length(getreggenes(genome))
-    genome.weights[nreg * nrecep + nreg * (target.id - 1) + source.id]
+function setweight!(genome::Genome, source, target, val)
+    genome.weights[indexweight(genome, source, target)] = val
 end
 
-function getweight(genome::Genome, source::RegGene, target::OutGene)
-    nrecep, nreg, nout = length(getreceptors(genome)), length(getreggenes(genome)), length(getoutgenes(genome))
-    genome.weights[nreg * nrecep + nreg ^ 2 +  nout * (target.id - 1) + source.id]
+function reset!(genome::Genome)
+    for reggene in getreggenes(genome)
+        reggene.exprsig = 0
+        reggene.nextexprsig = 0
+    end
+    for outgene in getoutgenes(genome)
+        outgene.exprsig = 0
+        outgene.nextexprsig = 0
+    end
 end
 
 function update!(genome::Genome)
@@ -88,7 +106,39 @@ function updateoutgenes!(genome::Genome)
 end end
 
 function finishupdate!(genome::Genome)
-    for gene in [getreggenes(genome); getoutgenes(genome)]
+    for gene in getreggenes(genome)
         gene.exprsig = gene.nextexprsig
+    end
+    for gene in getoutgenes(genome)
+        gene.exprsig = gene.nextexprsig
+    end
+end
+
+function mutate!(genome::Genome, mu, mustd)
+    dist = Normal(0, mustd)
+    for reggene in getreggenes(genome)
+        for recep in getreceptors(genome)
+            if rand() < mu
+                setweight!(genome, recep, reggene, getweight(genome, recep, reggene) + rand(dist))
+            end
+        end
+        for reggene2 in getreggenes(genome)
+            if rand() < mu
+                setweight!(genome, reggene, reggene2, getweight(genome, reggene, reggene2) + rand(dist))
+            end
+        end
+        if rand() < mu
+            reggene.threshold += rand(dist)
+        end
+    end
+    for outgene in getoutgenes(genome)
+        for reggene in getreggenes(genome)
+            if rand() < mu
+                setweight!(genome, reggene, outgene, getweight(genome, reggene, outgene) + rand(dist))
+            end
+        end
+        if rand() < mu
+            outgene.threshold += rand(dist)
+        end
     end
 end

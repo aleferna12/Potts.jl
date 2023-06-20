@@ -85,41 +85,70 @@ function updateattributes!(env::Environment, targetcellarea, divtargetcellarea)
         settargetarea!(cell, growthperc(cell) * (divta - ta) + ta)
 end end
 
-function select!(env::Environment)
+function updateattributes!(env::Environment{<:EvolvableCell}, targetcellarea, divtargetcellarea)
+    @invoke updateattributes!(env::Environment, targetcellarea, divtargetcellarea)
+    for cell in livingcells(env)
+        update!(getgenome(cell))
+end end
+
+function select!(env::Environment{CT}) where CT
+    killed = CT[]
     for cell in livingcells(env)
         if getarea(cell) <= 0
             kill!(env, cell)
-end end end
+            push!(killed, cell)
+    end end
+    killed
+end
 
 function kill!(env::Environment, cell::AbstractCell)
     if getarea(cell) > 0
-        for pos in iterpositions(cell)
+        for pos in iterpositions(env, cell)
             setsigma!(env, pos, MED)
     end end
     kill!(cell)
 end
 
-"Checks which cells can reproduce and "
-function reproduce!(env::Environment)
+"Checks which cells can reproduce and divide them."
+function reproduce!(env::Environment{CT}; divkwargs...) where CT
+    mothers, daughters = CT[], CT[]
     for cell in livingcells(env)
-        if isdividing(cell)
-            if dividenow!(cell)
-                dividecell!(env, cell)
-end end end end
+        if isdividing(cell) && dividenow!(cell)
+            cells = dividecell!(env, cell; divkwargs...)
+            if !isnothing(cells)
+                push!(mothers, cells[1])
+                push!(daughters, cells[2])
+    end end end
+    mothers, daughters
+end
 
-"Divides a cell in two. If the cell is too small this function won't do anything."
+"Tells a cell to divide in two. If the cell is too small this function won't do anything."
 function dividecell!(env::Environment, cell::AbstractCell)
     oldpositions, newpositions = split(iterpositions(env, cell))
 
     if !isempty(oldpositions) && !isempty(newpositions)
-        spawncell!(env, newpositions, tau=gettau(cell), targetarea=gettargetarea(cell), divtimer=IterationTimer(getdivtime(cell)))
+        newcell = spawncell!(env, newpositions, tau=gettau(cell), targetarea=gettargetarea(cell), divtimer=IterationTimer(getdivtime(cell)))
 
         # Update old cell's attributes
         for pos in newpositions
             losepos!(cell, pos)
-    end end
-    nothing
-end
+        end
+        return cell, newcell
+end end
+
+function dividecell!(env::Environment, cell::EvolvableCell; mu, mustd)
+    oldpositions, newpositions = split(iterpositions(env, cell))
+
+    if !isempty(oldpositions) && !isempty(newpositions)
+        newcell = spawncell!(env, newpositions, tau=gettau(cell), targetarea=gettargetarea(cell), divtimer=IterationTimer(getdivtime(cell)), genome=deepcopy(getgenome(cell)))
+        mutate!(getgenome(newcell), mu, mustd)
+
+        # Update old cell's attributes
+        for pos in newpositions
+            losepos!(cell, pos)
+        end
+        return cell, newcell
+end end
 
 "A simple petri dish with not much going on."
 struct Dish{T} <: Environment{T}

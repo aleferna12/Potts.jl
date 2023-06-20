@@ -60,16 +60,16 @@ function reassign(nt::NamedTuple; kwargs...)
 end
 
 "Default parameters for a base model."
-defaultparams(::Type{CPM}) = @typednamedtuple (
+const DEFAULTPARAMS = @typednamedtuple (
     endsim::Int = 100000,
     fieldsize::Int = 100,
-    seed::Int = 1,  # This is not working properly
+    seed::Int = 1,  # Seeding is not working properly
     taus::Int = 1,
     ncells::Vector{Int} = [20],
     cell_length::Vector{Int} = [5],
     targetcellarea::Vector{Float64} = [50],
     divtargetcellarea::Vector{Float64} = [100],
-    divtime::Vector{Int} = [1000],
+    divtime::Vector{Int} = [10000],
     adhesiontable::Matrix{Float64} = hcat(8),
     adhesionmedium::Vector{Float64} = [8],
     cellcolors::Vector{RGB{N0f8}} = [colorant"gray"],
