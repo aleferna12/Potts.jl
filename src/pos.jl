@@ -68,11 +68,19 @@ end
 
 const Edge = Pair{MatrixPos, MatrixPos}
 
+"Removes the edges specified by 'pos1' and 'pos2' from the edge set. Throws error if positions are not in the set."
 function removeedges!(edgeset, pos1, pos2)
     pop!(edgeset, Edge(pos1, pos2))
     pop!(edgeset, Edge(pos2, pos1))
 end
 
+"Adds the edges specified by 'pos1' and 'pos2' to the edge set.
+Returns true if the positions were not already in the set and false otherwise."
 function addedges!(edgeset, pos1, pos2)
-    push!(edgeset, Edge(pos1, pos2), Edge(pos2, pos1))
-end
+    edge1 = Edge(pos1, pos2)  # We only check for the first one for efficiency
+    if edge1 in edgeset
+        false
+    else
+        push!(edgeset, edge1, Edge(pos2, pos1))
+        true
+end end

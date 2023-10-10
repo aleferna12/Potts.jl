@@ -29,11 +29,10 @@ function step!(model::AbstractCPM{<:Environment{<:EvolvableCell}})
 end
 
 function updatehamiltonian!(model::AbstractCPM)
-    # TODO: Check c++ code to understand how we used to do it
-    # I think they are adding to a 'loop' variable but this variable is an int and they are adding floats (so doing nothing essentially)
     env = getenv(model)
-    tovisit = length(getedgeset(env)) / 8  # 8 because moore_neighbors gives 8 neighbours
-    for _ in 1:ceil(tovisit)
+    tovisit = length(getedgeset(env)) / 8
+    i = 0
+    while i < tovisit 
         edge = rand(getedgeset(env)) # TODO: this takes very long! Can it be optimized?
         if getsigma(env, edge[1]) == getsigma(env, edge[2])
             continue
@@ -41,7 +40,9 @@ function updatehamiltonian!(model::AbstractCPM)
 
         dH = deltahamiltonian(model, edge)
         if acceptcopy(dH, model[:boltzmanntemp])
-            copyspin!(env, edge) # TODO: this takes very long! Can it be optimized?
+            removed, added = copyspin!(env, edge) # TODO: this takes very long! Can it be optimized?
+            tovisit += (added - removed) / 4 # Equivalent to 8 because its both ways 
+        i += 1
 end end end
 
 "Computes the local energy difference in case a lattice copy event (represented by an edge) occurs."
@@ -114,16 +115,21 @@ function exchangepos!(env::Environment, oldsigma, newsigma, edge)
     nothing
 end
 
-"Updates any stale edges around 'pos'."
+"Updates any stale edges around 'pos' and returns the number of edges removed and added."
 function updateedges!(env::Environment, pos::MatrixPos)
+    removed = 0
+    added = 0
     sigmapos = getsigma(env, pos)
     for neigh in moore_neighbors(pos)
         sigmaneigh = getsigma(env, neigh)
         if sigmapos == sigmaneigh
             removeedges!(getedgeset(env), pos, neigh)
+            removed += 1
         elseif sigmaneigh != BORDER
-            addedges!(getedgeset(env), pos, neigh)
-end end end
+            added += addedges!(getedgeset(env), pos, neigh)
+    end end
+    removed, added
+end
 
 struct CPM{ET, PT} <: AbstractCPM{ET}
     env::ET

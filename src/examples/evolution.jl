@@ -15,7 +15,7 @@ getgenome(cell::EvolvingCell) = cell.genome
 getfitness(cell::EvolvingCell) = getexpressionsignal(getoutgenes(getgenome(cell))[1])
 
 function exampleevolution()
-    run(CPM(Dish(EvolvingCell, PARAMS.fieldsize), reassign(PARAMS, replaceprevsim=true, divtime=[5000], ncells=[20], imageplots=[:evoltarget])))
+    run(CPM(Dish(EvolvingCell, PARAMS.fieldsize), reassign(PARAMS, replaceprevsim=true, divtime=[5000], ncells=[20], imageplots=[:evoltarget, :sigma])))
 end
 
 function select!(env::Dish{EvolvingCell})
@@ -31,23 +31,15 @@ function select!(env::Dish{EvolvingCell})
 end
 
 function simulationimages(env::Dish{EvolvingCell}, plots::Vector{Symbol}, cellcolors, drawcellborders, drawcellcenters)
-    imgdict = Dict{Symbol, Matrix}()
-    for plot in plots
+    imgdict = @invoke simulationimages(env::Environment,
+                                       filter(x -> x !== :evoltarget, plots),
+                                       cellcolors, 
+                                       drawcellborders, 
+                                       drawcellcenters)
+    if :evoltarget in plots
         img = fill(colorant"white", size(getmatrix(env)))
-        if plot === :sigma
-            drawsigmas!(img, env)
-        elseif plot === :tau
-            drawtaus!(img, env, cellcolors)
-        elseif plot === :evoltarget
-            drawevoltarget!(img, env)
-        end
-        if drawcellborders
-            drawcellborders!(img, env, colorant"black")
-        end
-        if drawcellcenters
-            drawcellcenters!(img, livingcells(env), colorant"red")
-        end
-        imgdict[plot] = img[end:-1:1, :]
+        drawevoltarget!(img, env)
+        imgdict[:evoltarget] = img[end:-1:1, :]
     end
     imgdict
 end
