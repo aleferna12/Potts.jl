@@ -28,21 +28,43 @@ function step!(model::AbstractCPM{<:Environment{<:EvolvableCell}})
     reproduce!(getenv(model), mu=model[:mu], mustd=model[:mustd])
 end
 
+function statedges(size)
+    return ((size - 2 ) ^ 2 * 8 + (size * 4 - 4) * 5 + 4 * 3) / size ^ 2
+end
+
 function updatehamiltonian!(model::AbstractCPM)
     # TODO: Check c++ code to understand how we used to do it
     # I think they are adding to a 'loop' variable but this variable is an int and they are adding floats (so doing nothing essentially)
     env = getenv(model)
-    tovisit = length(getedgeset(env)) / 8  # 8 because moore_neighbors gives 8 neighbours
-    for _ in 1:ceil(tovisit)
-        edge = rand(getedgeset(env)) # TODO: this takes very long! Can it be optimized?
-        if getsigma(env, edge[1]) == getsigma(env, edge[2])
+    tovisit = (model[:fieldsize] - 2) * (model[:fieldsize] - 2)
+    visited = 0
+    edgen = length(getedgeset(env))
+    edgerm = 0
+    edgead = 0
+    loop = edgen / 8
+    for _ in 1:tovisit
+        pos1 = getrandompos(getmatrix(env), 1)
+        pos2 = rand(moore_neighbors(pos1))
+        edge = Edge(pos1, pos2)
+
+        # edge = rand(getedgeset(env)) # TODO: this takes very long! Can it be optimized?
+        if ((getsigma(env, edge[1]) == getsigma(env, edge[2])) || getsigma(env, edge[1]) == -1) || getsigma(env, edge[2]) == -1
             continue
         end
-
+        visited += 1
         dH = deltahamiltonian(model, edge)
         if acceptcopy(dH, model[:boltzmanntemp])
-            copyspin!(env, edge) # TODO: this takes very long! Can it be optimized?
-end end end
+            rm, ad = copyspin!(env, edge) # TODO: this takes very long! Can it be optimized?
+            edgerm += rm
+            edgead += ad
+            if loop > visited
+                loop -= rm / 4
+                loop += ad / 4
+    end end end
+    open(model[:simdir] * "/mcs2.csv", "a") do file
+        write(file, "$visited,$edgen,$edgerm,$edgead,$loop\n")
+    end
+end
 
 "Computes the local energy difference in case a lattice copy event (represented by an edge) occurs."
 function deltahamiltonian(model::AbstractCPM, copyattempt::Edge)
@@ -116,14 +138,19 @@ end
 
 "Updates any stale edges around 'pos'."
 function updateedges!(env::Environment, pos::MatrixPos)
+    rv = 0
+    ad = 0
     sigmapos = getsigma(env, pos)
     for neigh in moore_neighbors(pos)
         sigmaneigh = getsigma(env, neigh)
         if sigmapos == sigmaneigh
             removeedges!(getedgeset(env), pos, neigh)
+            rv += 1
         elseif sigmaneigh != BORDER
-            addedges!(getedgeset(env), pos, neigh)
-end end end
+            ad += addedges!(getedgeset(env), pos, neigh)
+    end end
+    rv, ad
+end
 
 struct CPM{ET, PT} <: AbstractCPM{ET}
     env::ET

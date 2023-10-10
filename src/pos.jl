@@ -69,9 +69,13 @@ end
 const Edge = Pair{MatrixPos, MatrixPos}
 
 function removeedges!(edgeset, pos1, pos2)
-    pop!(edgeset, Edge(pos1, pos2), Edge(pos2, pos1))
+    pop!(edgeset, Edge(pos1, pos2))
+    pop!(edgeset, Edge(pos2, pos1))
+    nothing
 end
 
 function addedges!(edgeset, pos1, pos2)
+    ret = Edge(pos1, pos2) in edgeset
     push!(edgeset, Edge(pos1, pos2), Edge(pos2, pos1))
+    !ret
 end
