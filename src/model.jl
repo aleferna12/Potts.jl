@@ -32,7 +32,7 @@ function updatehamiltonian!(model::AbstractCPM)
     env = getenv(model)
     tovisit = length(getedgeset(env)) / 8
     i = 0
-    while i < tovisit 
+    while i < tovisit
         edge = rand(getedgeset(env)) # TODO: this takes very long! Can it be optimized?
         if getsigma(env, edge[1]) == getsigma(env, edge[2])
             continue
@@ -58,7 +58,7 @@ function deltahamiltonian(model::AbstractCPM, copyattempt::Edge)
         cell = getcell(env, sigma2)
         deltaH += deltaHsize(getarea(cell), -1, gettargetarea(cell), model[:sizelambda])
     end
-    neighsigmas = [getsigma(env, nsig) for nsig in moore_neighbors(copyattempt[2])]
+    neighsigmas = (getsigma(env, nsig) for nsig in moore_neighbors(copyattempt[2]))
     deltaH + deltaHadhenergy(model, sigma2, sigma1, neighsigmas)
 end
 

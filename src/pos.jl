@@ -46,19 +46,19 @@ end
 "Often in CPM simulations positions are represented as matrix indices, so we provide this alias definition."
 const MatrixPos = Pos{Int}
 Base.getindex(matrix::Matrix, pos::MatrixPos) = matrix[pos.x, pos.y]
-Base.getindex(matrix::Matrix, positions::MatrixPos...) = [matrix[pos] for pos in positions]
+Base.getindex(matrix::Matrix, positions::AbstractArray{MatrixPos}) = [matrix[pos] for pos in positions]
 Base.setindex!(matrix::Matrix, value, pos::MatrixPos) = matrix[pos.x, pos.y] = value
-Base.setindex!(matrix::Matrix, value, positions::MatrixPos...) = for pos in positions matrix[pos] = value end
+Base.setindex!(matrix::Matrix, value, positions::AbstractArray{MatrixPos}) = for pos in positions matrix[pos] = value end
 Base.checkbounds(::Type{Bool}, matrix::Matrix, index::MatrixPos) = checkbounds(Bool, matrix, CartesianIndex(getx(index), gety(index)))
 Base.convert(::Type{MatrixPos}, pos::Pos) = MatrixPos(getx(pos), gety(pos))
-moore_neighbors(pos::MatrixPos) = [MatrixPos(pos.x - 1, pos.y),
+moore_neighbors(pos::MatrixPos) = (MatrixPos(pos.x - 1, pos.y),
                                    MatrixPos(pos.x + 1, pos.y),
                                    MatrixPos(pos.x, pos.y - 1),
                                    MatrixPos(pos.x, pos.y + 1),
                                    MatrixPos(pos.x - 1, pos.y - 1),
                                    MatrixPos(pos.x - 1, pos.y + 1),
                                    MatrixPos(pos.x + 1, pos.y - 1),
-                                   MatrixPos(pos.x + 1, pos.y + 1)]
+                                   MatrixPos(pos.x + 1, pos.y + 1))
 
 function getrandompos(matrix::Matrix, borderpadding::Integer=0)
     xrange = range(1 + borderpadding, size(matrix)[1] - borderpadding)

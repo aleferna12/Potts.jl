@@ -7,9 +7,8 @@
         {
             "type": "julia",
             "request": "launch",
-            "name": "Run active Julia file",
-            "program": "${workspaceFolder}/src/run.jl",
-            "stopOnEntry": false,
+            "name": "DebugEvol",
+            "program": "${workspaceFolder}/test/run.jl",
             "cwd": "${workspaceFolder}",
             "juliaEnv": "${command:activeJuliaEnvironment}"
         }

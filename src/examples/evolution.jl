@@ -1,4 +1,4 @@
-const PARAMS = merge(DEFAULTPARAMS, @typednamedtuple((mu=0.1, mustd=0.05)))
+const EVOLDEFAULTPARAMS = merge(DEFAULTPARAMS, @typednamedtuple((mu=0.1, mustd=0.05)))
 
 Base.@kwdef mutable struct EvolvingCell <: EvolvableCell
     sigma::Int
@@ -14,8 +14,9 @@ end
 getgenome(cell::EvolvingCell) = cell.genome
 getfitness(cell::EvolvingCell) = getexpressionsignal(getoutgenes(getgenome(cell))[1])
 
-function exampleevolution()
-    run(CPM(Dish(EvolvingCell, PARAMS.fieldsize), reassign(PARAMS, replaceprevsim=true, divtime=[5000], ncells=[20], imageplots=[:evoltarget, :sigma])))
+function exampleevolution(;kwargs...)
+    params = reassign(EVOLDEFAULTPARAMS; replaceprevsim=true, divtime=[5000], ncells=[20], imageplots=[:evoltarget, :sigma], kwargs...)
+    run(CPM(Dish(EvolvingCell, params.fieldsize), params))
 end
 
 function select!(env::Dish{EvolvingCell})
